@@ -95,7 +95,7 @@ if not args.resume:
     print("Initializing weights...")
     ssd_net.extras.apply(weights_init)
     ssd_net.loc.apply(weights_init)
-    ssd_conf.apply(weights_init)
+    ssd_net.conf.apply(weights_init)
 
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=momentum, weight_decay=weight_decay)
 criterion = MultiBoxLoss(num_classes, 0.5, True, 0, True, 3, 0.5, False, args.cuda)
@@ -136,7 +136,7 @@ def train():
         )
     batch_iterator = None
     data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
-                                  shuffle=True, collate_fn=default_collate, pin_memory=True)
+                                  shuffle=True, collate_fn=detection_collate, pin_memory=True)
     for iteration in range(args.start_iter, max_iter):
         if (not batch_iterator) or (iteration % epoch_size == 0):
             batch_iterator = iter(data_loader)
