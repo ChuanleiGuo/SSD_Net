@@ -3,6 +3,7 @@ from torchvision import transforms
 import numpy as np
 from numpy import random
 import types
+import cv2
 
 def intersect(box_a, box_b):
     max_xy = np.minimum(box_a[:, 2:], box_b[2:])

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from layers import *
+from layers import PriorBox, L2Norm, Detect
 from data import v2
 
 class SSD(nn.Module):
@@ -50,7 +50,7 @@ class SSD(nn.Module):
             Depending on phases:
             test:
                 Variable(tensor) of output class label predictions,
-                confidence score, and corresponding location predictions for 
+                confidence score, and corresponding location predictions for
                 each object detected. Shape: [bath, topk, 7]
             train:
                 list of concat output from:
@@ -65,6 +65,13 @@ class SSD(nn.Module):
         # apply vgg up to conv4_3 relu
         for k in range(23):
             x = self.vgg[k](x)
+
+        s = self.L2Norm(x)
+        sources.append(s)
+
+        # apply vgg up to fc7
+        for k in range(23, len(self.vgg)):
+            x = self.vgg[k](x)
         sources.append(x)
 
         # apply extra layers and cache source layer outputs
@@ -72,7 +79,7 @@ class SSD(nn.Module):
             x = F.relu(v(x), inplace=True)
             if k % 2 == 1:
                 sources.append(x)
-        
+
         for (x, l, c) in zip(sources, self.loc, self.conf):
             loc.append(l(x).permute(0, 2, 3, 1).contiguous())
             conf.append(c(x).permute(0, 2, 3, 1).contiguous())
@@ -82,9 +89,9 @@ class SSD(nn.Module):
 
         if self.phase == "test":
             output = self.detect(
-                loc.view(loc.size(0), -1, 4),       
-                self.softmax(conf.size(0), -1, self.num_classes),
-                self.priors.type(type(x.data))   
+                loc.view(loc.size(0), -1, 4),
+                self.softmax(conf.view(-1, self.num_classes)),
+                self.priors.type(type(x.data))
             )
         else:
             output = (
@@ -132,8 +139,13 @@ def add_extras(cfg, i, batch_norm=False):
     for k, v in enumerate(cfg):
         if in_channels != 'S':
             if v == 'S':
-                layers += [nn.Conv2d(in_channels, cfg[k + 1],
-                           kernel_size=(1, 3)[flag], stride=2, padding=1)]
+                layers += [
+                    nn.Conv2d(
+                        in_channels,
+                        cfg[k + 1],
+                        kernel_size=(1, 3)[flag],
+                        stride=2, padding=1)
+                ]
             else:
                 layers += [nn.Conv2d(in_channels, v, kernel_size=(1, 3)[flag])]
             flag = not flag
@@ -143,12 +155,12 @@ def add_extras(cfg, i, batch_norm=False):
 def multibox(vgg, extra_layers, cfg, num_classes):
     loc_layers = []
     conf_layers = []
-    vgg_source = [24. -2]
+    vgg_source = [24, -2]
     for k, v in enumerate(vgg_source):
         loc_layers += [nn.Conv2d(vgg[v].out_channels,
                                  cfg[k] * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(vgg[v].out_channels,
-                                  cfg[k] * 4, kernel_size=3, padding=1)]
+                                  cfg[k] * num_classes, kernel_size=3, padding=1)]
     for k, v in enumerate(extra_layers[1::2], 2):
         loc_layers += [nn.Conv2d(v.out_channels, cfg[k] * 4,
                                  kernel_size=3, padding=1)]

@@ -48,7 +48,7 @@ cfg = v2
 if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
 
-train_sets = [("2007", "trainval"), ("2012", "trainval")]
+train_sets = [("2007", "trainval")]
 ssd_dim = 300
 means = (104, 117, 123)
 num_classes = len(VOC_CLASSES) + 1
@@ -136,7 +136,7 @@ def train():
         )
     batch_iterator = None
     data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
-                                  shuffle=True, collate_fn=detection_collate, pin_memory=True)
+                                  shuffle=True, collate_fn=detection_collate, pin_memory=False)
     for iteration in range(args.start_iter, max_iter):
         if (not batch_iterator) or (iteration % epoch_size == 0):
             batch_iterator = iter(data_loader)
@@ -201,8 +201,8 @@ def train():
                 )
         if iteration % 5000 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(ssd_net.state_dict(), 'weights/ssd300_0712_' +
-                       repr(iteration) + '.pth')
+            path = os.path.join(args.save_folder, "ssd300_0712_{}.pth".format(repr(iteration)))
+            torch.save(ssd_net.state_dict(), path)
     torch.save(ssd_net.state_dict(), args.save_folder + "" + args.version + ".pth")
 
 def adjust_learning_rate(optimizer, gamma, step):
