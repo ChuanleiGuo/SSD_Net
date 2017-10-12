@@ -48,7 +48,7 @@ cfg = v2
 if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
 
-train_sets = [("2007", "trainval")]
+train_sets = [('2007', 'trainval'), ('2012', 'trainval')]
 ssd_dim = 300
 means = (104, 117, 123)
 num_classes = len(VOC_CLASSES) + 1
