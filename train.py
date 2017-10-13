@@ -69,7 +69,7 @@ ssd_net = build_ssd("train", 300, num_classes)
 net = ssd_net
 
 if args.cuda:
-    net = torch.nn.DataParallel(ssd_net)
+    net = torch.nn.DataParallel(ssd_net, device_ids=[0, 1])
     cudnn.benchmark = True
 
 if args.resume:
