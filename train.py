@@ -136,7 +136,7 @@ def train():
         )
     batch_iterator = None
     data_loader = data.DataLoader(dataset, batch_size, num_workers=args.num_workers,
-                                  shuffle=True, collate_fn=detection_collate, pin_memory=False)
+                                  shuffle=True, collate_fn=detection_collate, pin_memory=True)
     for iteration in range(args.start_iter, max_iter):
         if (not batch_iterator) or (iteration % epoch_size == 0):
             batch_iterator = iter(data_loader)
