@@ -1,51 +1,84 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import mxnet as mx
 
-class ConvActLayer(nn.Module):
+def conv_act_layer(from_layer, name, num_filter, kernel=(1, 1), pad=(0, 0), \
+    stride=(1, 1), act_type="relu", use_batchnorm=False):
     """
     wrapper for a small Convolution group
 
-    ## Parameters:
-
-    from_layer: nn.Module
+    Parameters:
+    ----------
+    from_layer : mx.symbol
         continue on which layer
-    num_filter: int
-        how many filters to use in conv layer
-    kernel: tuple (int, int)
+    name : str
+        base name of the new layers
+    num_filter : int
+        how many filters to use in Convolution layer
+    kernel : tuple (int, int)
         kernel size (h, w)
-    padding: tuple (int, int)
+    pad : tuple (int, int)
         padding size (h, w)
-    stride: tuple (int, int)
+    stride : tuple (int, int)
         stride size (h, w)
-    act_type: str
-        activation function, default to be relu
-    use_batchnorm: bool
+    act_type : str
+        activation type, can be relu...
+    use_batchnorm : bool
         whether to use batch normalization
-    
-    ## Returns:
 
-    (conv, relu) -> result
+    Returns:
+    ----------
+    (conv, relu) mx.Symbols
     """
+    bias = mx.symbol.Variable(
+        name="{}_conv_bias".format(name),
+        init=mx.init.Constant(0.0), attr={'__lr_mult__': '2.0'})
+    conv = mx.symbol.Convolution(
+        data=from_layer, kernel=kernel, pad=pad,
+        stride=stride, num_filter=num_filter, name="{}_conv".format(name), bias=bias)
+    if use_batchnorm:
+        conv = mx.symbol.BatchNorm(data=conv, name="{}_bn".format(name))
+    relu = mx.symbol.Activation(
+        data=conv, act_type=act_type,
+        name="{}_{}".format(name, act_type))
+    return relu
 
-    def __init__(self, from_layer, num_filter, kernel=(1, 1),
-                 padding=(0, 0), stride=(1, 1), act_type="relu",
-                 use_batchnorm=False):
-        super(ConvActLayer, self).__init__()
-        self.from_layer = from_layer
-        # TODO: `lt_mult` for bias of conv
-        self.conv = nn.Conv2d(
-            from_layer.out_channels,
-            num_filter, kernel, stride, padding, bias=True)
-        if use_batchnorm:
-            self.use_batchnorm = True
-            self.batchnorm = nn.BatchNorm2d(num_filter)
-        self.relu = nn.ReLU()
+def legacy_conv_act_layer(from_layer, name, num_filter, kernel=(1, 1), pad=(0, 0), \
+    stride=(1, 1), act_type="relu", use_batchnorm=False):
+    """
+    wrapper for a small Convolution group
 
-    def forward(self, x):
-        x = self.from_layer(x)
-        x = self.conv(x)
-        if self.use_batchnorm:
-            x = self.batchnorm(x)
-        x = self.relu(x)
-        return x
+    Parameters:
+    ----------
+    from_layer : mx.symbol
+        continue on which layer
+    name : str
+        base name of the new layers
+    num_filter : int
+        how many filters to use in Convolution layer
+    kernel : tuple (int, int)
+        kernel size (h, w)
+    pad : tuple (int, int)
+        padding size (h, w)
+    stride : tuple (int, int)
+        stride size (h, w)
+    act_type : str
+        activation type, can be relu...
+    use_batchnorm : bool
+        whether to use batch normalization
+
+    Returns:
+    ----------
+    (conv, relu) mx.Symbols
+    """
+    assert not use_batchnorm, "batchnorm not yet supported"
+    bias = mx.symbol.Variable(
+        name="conv{}_bias".format(name),
+        init=mx.init.Constant(0.0), attr={'__lr_mult__': '2.0'})
+    conv = mx.symbol.Convolution(
+        data=from_layer, bias=bias, kernel=kernel, pad=pad, \
+        stride=stride, num_filter=num_filter, name="conv{}".format(name))
+    relu = mx.symbol.Activation(
+        data=conv, act_type=act_type, \
+        name="{}{}".format(act_type, name))
+    if use_batchnorm:
+        relu = mx.symbol.BatchNorm(data=relu, name="bn{}".format(name))
+    return conv, relu
