@@ -91,3 +91,66 @@ def get_symbol_train(network, num_classes, from_layers, num_filters, strides, pa
 
     out = mx.symbol.Group([cls_prob, loc_loss, cls_label, det])
     return out
+
+def get_symbol(network, num_classes, from_layers, num_filters, sizes, ratios,
+               strides, pads, normalizations=-1, steps=[], min_filter=128,
+               nms_thresh=0.5, force_suppress=False, nms_topk=400, **kwargs):
+    """Build netword for testing SSD
+    ## Parameters
+    network : str
+        base network symbol name
+    num_classes : int
+        number of object classes not including background
+    from_layers : list of str
+        feature extraction layers, use '' for add extra layers
+        For example:
+        from_layers = ['relu4_3', 'fc7', '', '', '', '']
+        which means extract feature from relu4_3 and fc7, adding 4 extra layers
+        on top of fc7
+    num_filters : list of int
+        number of filters for extra layers, you can use -1 for extracted features,
+        however, if normalization and scale is applied, the number of filter for
+        that layer must be provided.
+        For example:
+        num_filters = [512, -1, 512, 256, 256, 256]
+    strides : list of int
+        strides for the 3x3 convolution appended, -1 can be used for extracted
+        feature layers
+    pads : list of int
+        paddings for the 3x3 convolution, -1 can be used for extracted layers
+    sizes : list or list of list
+        [min_size, max_size] for all layers or [[], [], []...] for specific layers
+    ratios : list or list of list
+        [ratio1, ratio2...] for all layers or [[], [], ...] for specific layers
+    normalizations : int or list of int
+        use normalizations value for all layers or [...] for specific layers,
+        -1 indicate no normalizations and scales
+    steps : list
+        specify steps for each MultiBoxPrior layer, leave empty, it will calculate
+        according to layer dimensions
+    min_filter : int
+        minimum number of filters used in 1x1 convolution
+    nms_thresh : float
+        non-maximum suppression threshold
+    force_suppress : boolean
+        whether suppress different class objects
+    nms_topk : int
+        apply NMS to top K detections
+
+    ## Returns
+    mx.Symbol
+    """
+    body = import_module(network).get_symbol(num_classes, *kwargs)
+    layers = multi_layer_feature(body, from_layers, num_filters, strides,
+        pads, min_filter)
+
+    loc_preds, cls_preds, anchor_boxes = multibox_layer(
+        layers, num_classes, sizes=sizes, ratios=ratios, normalization=normalizations,
+        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+
+    cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode="channel",
+        name="cls_prob")
+    out = mx.contrib.symbol.MultiBoxDetection(*[cls_prob, loc_preds, anchor_boxes],
+        name="detection", nms_threshold=nms_thresh, force_suppress=force_suppress,
+        variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
+    return out
