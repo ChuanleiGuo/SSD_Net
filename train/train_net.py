@@ -1,14 +1,14 @@
-import mxnet as mx
 import logging
 import sys
 import os
 import importlib
 import re
+import mxnet as mx
 from dataset.iterator import DetRecordIter
 from train.metric import MultiBoxMetric
 from evaluate.eval_metric import MApMetric, VOC07MApMetric
 from config.config import cfg
-from symbol.symbol_factory import get_symbol_train
+from networks.symbol_factory import get_symbol_train
 
 def convert_pretrained(name, args):
     """
@@ -58,7 +58,8 @@ def get_lr_scheduler(learning_rate, lr_refactor_step, lr_refactor_ratio,
             if begin_epoch >= s:
                 lr *= lr_refactor_ratio
         if lr != learning_rate:
-            logging.getLogger().info("Adjusted learning rate to {} for epoch {}".format(lr, begin_epoch))
+            logging.getLogger().info(
+                "Adjusted learning rate to {} for epoch {}".format(lr, begin_epoch))
         steps = [epoch_size * (x - begin_epoch) for x in iter_refactor if x > begin_epoch]
         if not steps:
             return (lr, None)
@@ -204,13 +205,15 @@ def train_net(net, train_path, num_classes, batch_size, data_shape, mean_pixels,
                     if not 'pred' in k:
                         fixed_param_names.append(k)
     elif pretrained:
-        logger.info("Start training with {} from pretrained model {}"
-            .format(ctx_str, pretrained))
+        logger.info(
+            "Start training with %s from pretrained model %s",
+            ctx_str,
+            pretrained)
         _, args, auxs = mx.model.load_checkpoint(pretrained, epoch)
         args = convert_pretrained(pretrained, args)
     else:
-        logger.info("Experimental: start training from scratch with {}"
-            .format(ctx_str))
+        logger.info(
+            "Experimental: start training from scratch with %s", ctx_str)
         args = None
         auxs = None
         fixed_param_names = None
