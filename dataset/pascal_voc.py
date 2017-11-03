@@ -65,7 +65,7 @@ class PascalVoc(Imdb):
         # Returns
         entire list of images specified in the setting
         """
-        image_set_index_file = os.path.join(self.data_path, "Imagesets", "Main",
+        image_set_index_file = os.path.join(self.data_path, "ImageSets", "Main",
             self.image_set + ".txt")
         assert os.path.exists(image_set_index_file), \
             "Path does not exist: {}".format(image_set_index_file)
