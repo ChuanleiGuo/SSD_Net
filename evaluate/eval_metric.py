@@ -1,6 +1,7 @@
 import mxnet as mx
 import numpy as np
 
+
 class MApMetric(mx.metric.EvalMetric):
     """
     Calculate mean AP for object detection task
@@ -16,7 +17,12 @@ class MApMetric(mx.metric.EvalMetric):
     pred_idx : int
         prediction index in network output list
     """
-    def __init__(self, ovp_thresh=0.5, use_difficult=False, class_names=None, pred_idx=0):
+
+    def __init__(self,
+                 ovp_thresh=0.5,
+                 use_difficult=False,
+                 class_names=None,
+                 pred_idx=0):
         super(MApMetric, self).__init__('mAP')
         if class_names is None:
             self.num = None
@@ -61,7 +67,7 @@ class MApMetric(mx.metric.EvalMetric):
             else:
                 return (self.name, self.sum_metric / self.num_inst)
         else:
-            names = ['%s'%(self.name[i]) for i in range(self.num)]
+            names = ['%s' % (self.name[i]) for i in range(self.num)]
             values = [x / y if y != 0 else float('nan') \
                 for x, y in zip(self.sum_metric, self.num_inst)]
             return (names, values)
@@ -79,6 +85,7 @@ class MApMetric(mx.metric.EvalMetric):
         preds: mx.nd.array (m * 6)
             2-d array of detections, m objects(id-score-xmin-ymin-xmax-ymax)
         """
+
         def iou(x, ys):
             """
             Calculate intersection-over-union overlap
@@ -121,8 +128,9 @@ class MApMetric(mx.metric.EvalMetric):
                 dets = pred[indices]
                 pred = np.delete(pred, indices, axis=0)
                 # sort by score, desceding
-                dets[dets[:,1].argsort()[::-1]]
-                records = np.hstack((dets[:, 1][:, np.newaxis], np.zeros((dets.shape[0], 1))))
+                dets[dets[:, 1].argsort()[::-1]]
+                records = np.hstack((dets[:, 1][:, np.newaxis], np.zeros(
+                    (dets.shape[0], 1))))
                 # ground-truths
                 label_indices = np.where(label[:, 0].astype(int) == cid)[0]
                 gts = label[label_indices, :]
@@ -135,9 +143,8 @@ class MApMetric(mx.metric.EvalMetric):
                         ovargmax = np.argmax(ious)
                         ovmax = ious[ovargmax]
                         if ovmax > self.ovp_thresh:
-                            if (not self.use_difficult and
-                                gts.shape[1] >= 6 and
-                                gts[ovargmax, 5] > 0):
+                            if (not self.use_difficult and gts.shape[1] >= 6
+                                    and gts[ovargmax, 5] > 0):
                                 pass
                             else:
                                 if not found[ovargmax]:
@@ -147,7 +154,7 @@ class MApMetric(mx.metric.EvalMetric):
                                     # duplicate
                                     records[j, -1] = 2  # fp
                         else:
-                            records[j, -1] = 2 # fp
+                            records[j, -1] = 2  # fp
                 else:
                     # no gt, mark all fp
                     records[:, -1] = 2
@@ -194,8 +201,9 @@ class MApMetric(mx.metric.EvalMetric):
 
     def _recall_prec(self, record, count):
         """ get recall and precision from internal records """
-        record = np.delete(record, np.where(record[:, 1].astype(int) == 0)[0], axis=0)
-        sorted_records = record[record[:,0].argsort()[::-1]]
+        record = np.delete(
+            record, np.where(record[:, 1].astype(int) == 0)[0], axis=0)
+        sorted_records = record[record[:, 0].argsort()[::-1]]
         tp = np.cumsum(sorted_records[:, 1].astype(int) == 1)
         fp = np.cumsum(sorted_records[:, 1].astype(int) == 2)
         if count <= 0:
@@ -248,6 +256,7 @@ class MApMetric(mx.metric.EvalMetric):
 
 class VOC07MApMetric(MApMetric):
     """ Mean average precision metric for PASCAL V0C 07 dataset """
+
     def __init__(self, *args, **kwargs):
         super(VOC07MApMetric, self).__init__(*args, **kwargs)
 

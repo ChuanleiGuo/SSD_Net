@@ -1,18 +1,21 @@
 import mxnet as mx
 import numpy as np
 
+
 class MultiBoxMetric(mx.metric.EvalMetric):
-    """ Calculate metrics for Multibox training """
+    """Calculate metrics for Multibox training """
     def __init__(self, eps=1e-8):
-        super(MultiBoxMetric, self).__init__("Multibox")
+        super(MultiBoxMetric, self).__init__('MultiBox')
         self.eps = eps
         self.num = 2
-        self.name = ["CrossEmtropy", "SmoothL1"]
+        self.name = ['CrossEntropy', 'SmoothL1']
         self.reset()
 
     def reset(self):
-        """ Override reset behavior """
-        if getattr(self, "num", None) is None:
+        """
+        override reset behavior
+        """
+        if getattr(self, 'num', None) is None:
             self.num_inst = 0
             self.sum_metric = 0.0
         else:
@@ -20,7 +23,9 @@ class MultiBoxMetric(mx.metric.EvalMetric):
             self.sum_metric = [0.0] * self.num
 
     def update(self, labels, preds):
-        """ Implementation of updating metrics """
+        """
+        Implementation of updating metrics
+        """
         # get generated multi label from network
         cls_prob = preds[0].asnumpy()
         loc_loss = preds[1].asnumpy()
@@ -51,11 +56,11 @@ class MultiBoxMetric(mx.metric.EvalMetric):
         """
         if self.num is None:
             if self.num_inst == 0:
-                return (self.name, float("nan"))
+                return (self.name, float('nan'))
             else:
                 return (self.name, self.sum_metric / self.num_inst)
         else:
-            names = ['%s' % (self.name[i]) for i in range(self.num)]
+            names = ['%s'%(self.name[i]) for i in range(self.num)]
             values = [x / y if y != 0 else float('nan') \
                 for x, y in zip(self.sum_metric, self.num_inst)]
             return (names, values)

@@ -1,49 +1,62 @@
+"""Presets for various network configurations"""
+from __future__ import absolute_import
 import logging
 from . import symbol_builder
+
 
 def get_config(network, data_shape, **kwargs):
     """Configuration factory for various networks
 
-    ## Parameters
-    network: str
+    Parameters
+    ----------
+    network : str
         base network name, such as vgg_reduced, inceptionv3, resnet...
-    data_shape: int
-        intput data dimension
-    kwargs: dict
+    data_shape : int
+        input data dimension
+    kwargs : dict
         extra arguments
     """
-    if network == "vgg16_reduced":
+    if network == 'vgg16_reduced':
         if data_shape >= 448:
             from_layers = ['relu4_3', 'relu7', '', '', '', '', '']
             num_filters = [512, -1, 512, 256, 256, 256, 256]
             strides = [-1, -1, 2, 2, 2, 2, 1]
             pads = [-1, -1, 1, 1, 1, 1, 1]
-            sizes = [[.07, .1025], [.15, .2121], [.3, .3674], [.45, .5196], [.6, .6708], \
+            sizes = [[.07, .1025], [.15,.2121], [.3, .3674], [.45, .5196], [.6, .6708], \
                 [.75, .8216], [.9, .9721]]
-            ratios = [[1, 2, .5], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], \
-                [1, 2, .5, 3, 1./3], [1, 2, .5], [1, 2, .5]]
+            ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+                [1,2,.5,3,1./3], [1,2,.5], [1,2,.5]]
             normalizations = [20, -1, -1, -1, -1, -1, -1]
-            steps = [] if data_shape != 512 else [x / 512.0 for x in
-                [8, 16, 32, 64, 128, 256, 512]]
+            steps = [] if data_shape != 512 else [
+                x / 512.0 for x in [8, 16, 32, 64, 128, 256, 512]
+            ]
         else:
             from_layers = ['relu4_3', 'relu7', '', '', '', '']
             num_filters = [512, -1, 512, 256, 256, 256]
             strides = [-1, -1, 2, 2, 1, 1]
             pads = [-1, -1, 1, 1, 0, 0]
-            sizes = [[.1, .141], [.2, .272], [.37, .447], [.54, .619], [.71, .79], [.88, .961]]
-            ratios = [[1, 2, .5], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], \
-                [1, 2, .5], [1, 2, .5]]
+            sizes = [[.1, .141], [.2, .272], [.37, .447], [.54, .619],
+                     [.71, .79], [.88, .961]]
+            ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+                [1,2,.5], [1,2,.5]]
             normalizations = [20, -1, -1, -1, -1, -1]
-            steps = [] if data_shape != 300 else [x / 300.0 for x in [8, 16, 32, 64, 100, 300]]
+            steps = [] if data_shape != 300 else [
+                x / 300.0 for x in [8, 16, 32, 64, 100, 300]
+            ]
         if not (data_shape == 300 or data_shape == 512):
-            logging.warn('data_shape %d was not tested, use with caucious.' % data_shape)
+            logging.warn('data_shape %d was not tested, use with caucious.' %
+                         data_shape)
         return locals()
     elif network == 'inceptionv3':
-        from_layers = ['ch_concat_mixed_7_chconcat', 'ch_concat_mixed_10_chconcat', '', '', '', '']
+        from_layers = [
+            'ch_concat_mixed_7_chconcat', 'ch_concat_mixed_10_chconcat', '',
+            '', '', ''
+        ]
         num_filters = [-1, -1, 512, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
-        sizes = [[.1, .141], [.2,.272], [.37, .447], [.54, .619], [.71, .79], [.88, .961]]
+        sizes = [[.1, .141], [.2, .272], [.37, .447], [.54, .619], [.71, .79],
+                 [.88, .961]]
         ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5], [1,2,.5]]
         normalizations = -1
@@ -57,9 +70,10 @@ def get_config(network, data_shape, **kwargs):
         num_filters = [-1, -1, 512, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
-        sizes = [[.1, .141], [.2,.272], [.37, .447], [.54, .619], [.71, .79], [.88, .961]]
-        ratios = [[1, 2, .5], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], \
-            [1, 2, .5], [1, 2, .5]]
+        sizes = [[.1, .141], [.2, .272], [.37, .447], [.54, .619], [.71, .79],
+                 [.88, .961]]
+        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5], [1,2,.5]]
         normalizations = -1
         steps = []
         return locals()
@@ -71,31 +85,36 @@ def get_config(network, data_shape, **kwargs):
         num_filters = [-1, -1, 512, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
-        sizes = [[.1, .141], [.2,.272], [.37, .447], [.54, .619], [.71, .79], [.88, .961]]
-        ratios = [[1, 2, .5], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], \
-            [1, 2, .5], [1, 2, .5]]
+        sizes = [[.1, .141], [.2, .272], [.37, .447], [.54, .619], [.71, .79],
+                 [.88, .961]]
+        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5], [1,2,.5]]
         normalizations = -1
         steps = []
         return locals()
     elif network == 'mobilenet':
-        from_layers = ['activation22', 'activation26', '', '', '', '']
-        num_filters = [-1, -1, 512, 256, 256, 128]
-        strides = [-1, -1, 2, 2, 2, 2]
-        pads = [-1, -1, 1, 1, 1, 1]
-        sizes = [[.1, .141], [.2, .272], [.37, .447], [.54, .619], [.71, .79], [.88, .961]]
-        ratios = [[1, 2, .5], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], [1, 2, .5, 3, 1./3], \
-            [1, 2, .5], [1, 2, .5]]
+        from_layers = ['conv_12_relu', 'conv_14_relu', '', '', '', '', '']
+        num_filters = [-1, -1, 512, 256, 256, 256, 256]
+        strides = [-1, -1, 2, 2, 2, 2, 2]
+        pads = [-1, -1, 1, 1, 1, 1, 1]
+        sizes = [[.07, .1025], [.15,.2121], [.3, .3674], [.45, .5196], [.6, .6708], \
+            [.75, .8216], [.9, .9721]]
+        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5,3,1./3], [1,2,.5], [1,2,.5]]
         normalizations = -1
         steps = []
         return locals()
     else:
-        msg = 'No configuration found for %s with data_shape %d' % (network, data_shape)
+        msg = 'No configuration found for %s with data_shape %d' % (network,
+                                                                    data_shape)
         raise NotImplementedError(msg)
+
 
 def get_symbol_train(network, data_shape, **kwargs):
     """Wrapper for get symbol for train
 
-    ## Parameters
+    Parameters
+    ----------
     network : str
         name for the base network symbol
     data_shape : int
@@ -110,10 +129,12 @@ def get_symbol_train(network, data_shape, **kwargs):
     config.update(kwargs)
     return symbol_builder.get_symbol_train(**config)
 
+
 def get_symbol(network, data_shape, **kwargs):
     """Wrapper for get symbol for test
 
-    ## Parameters
+    Parameters
+    ----------
     network : str
         name for the base network symbol
     data_shape : int

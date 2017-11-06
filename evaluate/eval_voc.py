@@ -24,10 +24,12 @@ def parse_voc_rec(filename):
         obj_dict['name'] = obj.find('name').text
         obj_dict['difficult'] = int(obj.find('difficult').text)
         bbox = obj.find('bndbox')
-        obj_dict['bbox'] = [int(bbox.find('xmin').text),
-                            int(bbox.find('ymin').text),
-                            int(bbox.find('xmax').text),
-                            int(bbox.find('ymax').text)]
+        obj_dict['bbox'] = [
+            int(bbox.find('xmin').text),
+            int(bbox.find('ymin').text),
+            int(bbox.find('xmax').text),
+            int(bbox.find('ymax').text)
+        ]
         objects.append(obj_dict)
     return objects
 
@@ -66,7 +68,13 @@ def voc_ap(rec, prec, use_07_metric=False):
     return ap
 
 
-def voc_eval(detpath, annopath, imageset_file, classname, cache_dir, ovthresh=0.5, use_07_metric=False):
+def voc_eval(detpath,
+             annopath,
+             imageset_file,
+             classname,
+             cache_dir,
+             ovthresh=0.5,
+             use_07_metric=False):
     """
     pascal voc evaluation
     :param detpath: detection results detpath.format(classname)
@@ -89,9 +97,11 @@ def voc_eval(detpath, annopath, imageset_file, classname, cache_dir, ovthresh=0.
     if not os.path.isfile(cache_file):
         recs = {}
         for ind, image_filename in enumerate(image_filenames):
-            recs[image_filename] = parse_voc_rec(annopath.format(image_filename))
+            recs[image_filename] = parse_voc_rec(
+                annopath.format(image_filename))
             if ind % 100 == 0:
-                print('reading annotations for {:d}/{:d}'.format(ind + 1, len(image_filenames)))
+                print('reading annotations for {:d}/{:d}'.format(
+                    ind + 1, len(image_filenames)))
         print('saving annotations cache to {:s}'.format(cache_file))
         with open(cache_file, 'wb') as f:
             pickle.dump(recs, f)
@@ -103,14 +113,18 @@ def voc_eval(detpath, annopath, imageset_file, classname, cache_dir, ovthresh=0.
     class_recs = {}
     npos = 0
     for image_filename in image_filenames:
-        objects = [obj for obj in recs[image_filename] if obj['name'] == classname]
+        objects = [
+            obj for obj in recs[image_filename] if obj['name'] == classname
+        ]
         bbox = np.array([x['bbox'] for x in objects])
         difficult = np.array([x['difficult'] for x in objects]).astype(np.bool)
         det = [False] * len(objects)  # stand for detected
         npos = npos + sum(~difficult)
-        class_recs[image_filename] = {'bbox': bbox,
-                                      'difficult': difficult,
-                                      'det': det}
+        class_recs[image_filename] = {
+            'bbox': bbox,
+            'difficult': difficult,
+            'det': det
+        }
 
     # read detections
     detfile = detpath.format(classname)
@@ -123,8 +137,8 @@ def voc_eval(detpath, annopath, imageset_file, classname, cache_dir, ovthresh=0.
     bbox = np.array([[float(z) for z in x[2:]] for x in splitlines])
 
     # sort by confidence
-    sorted_inds = np.argsort(-1 * confidence)
-    sorted_scores = np.sort(-1 * confidence)
+    sorted_inds = np.argsort(-confidence)
+    sorted_scores = np.sort(-confidence)
     bbox = bbox[sorted_inds, :]
     image_ids = [image_ids[x] for x in sorted_inds]
 
