@@ -1,7 +1,7 @@
 import argparse
-import mxnet as mx
 import os
 import sys
+import mxnet as mx
 from train.train_net import train_net
 
 
@@ -236,15 +236,16 @@ def parse_args():
     return args
 
 
-def parse_classes_names(args):
-    """parse # classes and class_names if applicable """
+def parse_class_names(args):
+    """ parse # classes and class_names if applicable """
     num_class = args.num_class
     if len(args.class_names) > 0:
         if os.path.isfile(args.class_names):
+            # try to open it to read class names
             with open(args.class_names, 'r') as f:
                 class_names = [l.strip() for l in f.readlines()]
         else:
-            class_names = [c.strip() for c in args.class_names.split(",")]
+            class_names = [c.strip() for c in args.class_names.split(',')]
         assert len(class_names) == num_class, str(len(class_names))
         for name in class_names:
             assert len(name) > 0
@@ -253,22 +254,20 @@ def parse_classes_names(args):
     return class_names
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = parse_args()
     # context list
-    ctx = [mx.gpu(int(i)) for i in args.gpus.split(",") if i.strip()]
+    ctx = [mx.gpu(int(i)) for i in args.gpus.split(',') if i.strip()]
     ctx = [mx.cpu()] if not ctx else ctx
-
     # class names if applicable
-    class_names = parse_classes_names(args)
+    class_names = parse_class_names(args)
     # start training
     train_net(
         args.network,
         args.train_path,
         args.num_class,
         args.batch_size,
-        args.data_shape,
-        [args.mean_r, args.mean_g, args.mean_b],
+        args.data_shape, [args.mean_r, args.mean_g, args.mean_b],
         args.resume,
         args.finetune,
         args.pretrained,
