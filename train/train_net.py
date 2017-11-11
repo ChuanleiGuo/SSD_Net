@@ -192,6 +192,8 @@ def train_net(net,
         logger.addHandler(fh)
 
     # check args
+    prefix = prefix + net + "_"
+
     if isinstance(data_shape, int):
         data_shape = (3, data_shape, data_shape)
     assert len(data_shape) == 3 and data_shape[0] == 3
