@@ -300,13 +300,16 @@ def train_net(net,
     learning_rate, lr_scheduler = get_lr_scheduler(
         learning_rate, lr_refactor_step, lr_refactor_ratio, num_example,
         batch_size, begin_epoch)
+    # optimizer_params = {
+    #     'learning_rate': learning_rate,
+    #     'momentum': momentum,
+    #     'wd': weight_decay,
+    #     'lr_scheduler': lr_scheduler,
+    #     'clip_gradient': None,
+    #     'rescale_grad': 1.0 / len(ctx) if len(ctx) > 0 else 1.0
+    # }
     optimizer_params = {
-        'learning_rate': learning_rate,
-        'momentum': momentum,
-        'wd': weight_decay,
-        'lr_scheduler': lr_scheduler,
-        'clip_gradient': None,
-        'rescale_grad': 1.0 / len(ctx) if len(ctx) > 0 else 1.0
+        "learning_rate": learning_rate
     }
     monitor = mx.mon.Monitor(
         iter_monitor, pattern=monitor_pattern) if iter_monitor > 0 else None
