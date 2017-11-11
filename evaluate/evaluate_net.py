@@ -7,7 +7,7 @@ from dataset.iterator import DetRecordIter
 from config.config import cfg
 from evaluate.eval_metric import MApMetric, VOC07MApMetric
 import logging
-from network.symbol_factory import get_symbol
+from networks.symbol_factory import get_symbol
 
 def evaluate_net(net, path_imgrec, num_classes, mean_pixels, data_shape,
                  model_prefix, epoch, ctx=mx.cpu(), batch_size=1,
