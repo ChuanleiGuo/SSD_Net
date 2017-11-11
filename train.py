@@ -72,7 +72,7 @@ def parse_args():
         '--prefix',
         dest='prefix',
         help='new model prefix',
-        default=os.path.join(os.getcwd(), 'model', 'ssd'),
+        default=os.path.join(os.getcwd(), 'model', 'ssd_'),
         type=str)
     parser.add_argument(
         '--gpus',
