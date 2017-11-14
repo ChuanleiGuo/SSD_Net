@@ -192,7 +192,7 @@ def train_net(net,
         logger.addHandler(fh)
 
     # check args
-    prefix = prefix + net
+    prefix = prefix + net + "_"
 
     if isinstance(data_shape, int):
         data_shape = (3, data_shape, data_shape)
