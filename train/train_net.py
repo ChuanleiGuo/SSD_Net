@@ -198,7 +198,7 @@ def train_net(net,
         data_shape = (3, data_shape, data_shape)
     assert len(data_shape) == 3 and data_shape[0] == 3
     if prefix.endswith('_'):
-        prefix += '_' + str(data_shape[1])
+        prefix += str(data_shape[1])
 
     if isinstance(mean_pixels, (int, float)):
         mean_pixels = [mean_pixels, mean_pixels, mean_pixels]
