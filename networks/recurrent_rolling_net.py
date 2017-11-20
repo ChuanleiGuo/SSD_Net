@@ -1,8 +1,34 @@
 import copy
-from math import ceil
+from math import ceil, floor
 import numpy as np
 import mxnet as mx
 
+from networks.symbol_factory import get_symbol_train
+
+rolling_time = 4
+rolling_rate = 0.075
+gpus = "0,1,2,3"
+gpulist = gpus.split(",")
+num_gpus = len(gpulist)
+batch_size = 4
+num_classes = 2
+
+resize_height, resize_width = 2560, 768
+min_dim = min(resize_width, resize_height)
+
+# in percent %
+min_ratio = 15
+max_ratio = 85
+# TODO: change the implementation of using hard code
+step = int(floor((max_ratio - min_ratio) / (5 - 2)))
+min_sizes = []
+max_sizes = []
+for ratio in range(min_ratio, max_ratio + 1, step):
+    min_sizes.append(min_dim * ratio / 100.)
+    max_sizes.append(min_dim * (ratio + step) / 100.)
+min_sizes = [min_dim * 6.7 / 100.] + min_sizes
+max_sizes = [[]] + max_sizes
+aspect_ratios = [[2], [2, 3], [2, 3], [2, 3], [2, 3]]
 
 def create_rolling_struct(net, from_layers_basename=[], num_outputs=[], odd=[],
         rolling_rate=0.25, roll_idx=1, conv2=False, normalize=True):
