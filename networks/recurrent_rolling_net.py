@@ -261,6 +261,11 @@ def get_symbol_rolling_train(network,
         variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
     det = mx.symbol.MakeLoss(data=det, grad_scale=0, name="det_out")
 
+    # group output
+    out = mx.symbol.Group([cls_prob, loc_loss, cls_label, det])
+
+    outputs = [out]
+
     # Rolling Layers
     for roll_idx in range(1, rolling_time + 1):
         roll_layers = create_rolling_struct(layers, num_outputs=num_outputs, odd=odd,
@@ -295,7 +300,8 @@ def get_symbol_rolling_train(network,
             variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
         det = mx.symbol.MakeLoss(data=det, grad_scale=0, name="det_out_%d" % roll_idx)
 
+        out = mx.symbol.Group([cls_prob, loc_loss, cls_label, det])
 
-    # group output
-    out = mx.symbol.Group([cls_prob, loc_loss, cls_label, det])
-    return out
+        outputs.append(out)
+
+    return outputs
