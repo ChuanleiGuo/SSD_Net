@@ -162,6 +162,60 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
 
     return roll_layers
 
+def add_multibox_and_loss_for_extra(extra_layers, label, num_classes, num_filters,
+        sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
+        force_suppress=False, nms_topk=400, rolling_idx=0):
+
+    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
+        num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
+        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+
+    tmp = mx.contrib.symbol.MultiBoxTarget(
+        *[anchor_boxes, label, cls_preds], overlap_threshold=.5, \
+        ignore_label=-1, negative_mining_ratio=3, minimum_negative_samples=0, \
+        negative_mining_thresh=.5, variances=(0.1, 0.1, 0.2, 0.2),
+        name="multibox_target_%d" % rolling_idx)
+    loc_target = tmp[0]
+    loc_target_mask = tmp[1]
+    cls_target = tmp[2]
+
+    cls_prob = mx.symbol.SoftmaxOutput(data=cls_preds, label=cls_target, \
+        ignore_label=-1, use_ignore=True, grad_scale=1., multi_output=True, \
+        normalization='valid', name="cls_prob_%d" % rolling_idx)
+    loc_loss_ = mx.symbol.smooth_l1(name="loc_loss__%d" % rolling_idx, \
+        data=loc_target_mask * (loc_preds - loc_target), scalar=1.0)
+    loc_loss = mx.symbol.MakeLoss(loc_loss_, grad_scale=1., \
+        normalization='valid', name="loc_loss_%d" % rolling_idx)
+
+    # monitoring training status
+    cls_label = mx.symbol.MakeLoss(
+        data=cls_target, grad_scale=0, name="cls_label_%d" % rolling_idx)
+    det = mx.contrib.symbol.MultiBoxDetection(*[cls_prob, loc_preds, anchor_boxes], \
+        name="detection_%d" % rolling_idx, nms_threshold=nms_thresh, force_suppress=force_suppress,
+        variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
+    det = mx.symbol.MakeLoss(data=det, grad_scale=0, name="det_out_%d" % rolling_idx)
+
+    # group output
+    out = mx.symbol.Group([cls_prob, loc_loss, cls_label, det])
+
+    return out
+
+def add_multibox_for_extra(extra_layers, num_classes, num_filters,
+        sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
+        force_suppress=False, nms_topk=400, rolling_idx=0):
+
+    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
+        num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
+        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+
+    cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode='channel', \
+        name='cls_prob_%d' % rolling_idx)
+    out = mx.contrib.symbol.MultiBoxDetection(*[cls_prob, loc_preds, anchor_boxes], \
+        name="detection_%d" % rolling_idx, nms_threshold=nms_thresh, force_suppress=force_suppress,
+        variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
+
+    return out
+
 
 def get_symbol_rolling_train(network,
                             num_classes,
@@ -253,41 +307,95 @@ def get_symbol_rolling_train(network,
 
     return outputs
 
+def get_symbol_rolling_test(
+                network,
+                num_classes,
+                from_layers,
+                num_filters,
+                sizes,
+                ratios,
+                strides,
+                pads,
+                normalizations=-1,
+                steps=[],
+                min_filter=128,
+                nms_thresh=0.5,
+                force_suppress=False,
+                nms_topk=400,
+                **kwargs):
+    """Build network for testing SSD
 
-def add_multibox_and_loss_for_extra(extra_layers, label, num_classes, num_filters,
-        sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
-        force_suppress=False, nms_topk=400, rolling_idx=0, **kwargs):
+    Parameters
+    ----------
+    network : str
+        base network symbol name
+    num_classes : int
+        number of object classes not including background
+    from_layers : list of str
+        feature extraction layers, use '' for add extra layers
+        For example:
+        from_layers = ['relu4_3', 'fc7', '', '', '', '']
+        which means extract feature from relu4_3 and fc7, adding 4 extra layers
+        on top of fc7
+    num_filters : list of int
+        number of filters for extra layers, you can use -1 for extracted features,
+        however, if normalization and scale is applied, the number of filter for
+        that layer must be provided.
+        For example:
+        num_filters = [512, -1, 512, 256, 256, 256]
+    strides : list of int
+        strides for the 3x3 convolution appended, -1 can be used for extracted
+        feature layers
+    pads : list of int
+        paddings for the 3x3 convolution, -1 can be used for extracted layers
+    sizes : list or list of list
+        [min_size, max_size] for all layers or [[], [], []...] for specific layers
+    ratios : list or list of list
+        [ratio1, ratio2...] for all layers or [[], [], ...] for specific layers
+    normalizations : int or list of int
+        use normalizations value for all layers or [...] for specific layers,
+        -1 indicate no normalizations and scales
+    steps : list
+        specify steps for each MultiBoxPrior layer, leave empty, it will calculate
+        according to layer dimensions
+    min_filter : int
+        minimum number of filters used in 1x1 convolution
+    nms_thresh : float
+        non-maximum suppression threshold
+    force_suppress : boolean
+        whether suppress different class objects
+    nms_topk : int
+        apply NMS to top K detections
 
-    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
+    Returns
+    -------
+    mx.Symbol
+
+    """
+    body = import_module(network).get_symbol(num_classes, **kwargs)
+    layers = multi_layer_feature(
+        body, from_layers, num_filters, strides, pads, min_filter=min_filter)
+
+    loc_preds, cls_preds, anchor_boxes = multibox_layer(layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
         num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
 
-    tmp = mx.contrib.symbol.MultiBoxTarget(
-        *[anchor_boxes, label, cls_preds], overlap_threshold=.5, \
-        ignore_label=-1, negative_mining_ratio=3, minimum_negative_samples=0, \
-        negative_mining_thresh=.5, variances=(0.1, 0.1, 0.2, 0.2),
-        name="multibox_target_%d" % rolling_idx)
-    loc_target = tmp[0]
-    loc_target_mask = tmp[1]
-    cls_target = tmp[2]
-
-    cls_prob = mx.symbol.SoftmaxOutput(data=cls_preds, label=cls_target, \
-        ignore_label=-1, use_ignore=True, grad_scale=1., multi_output=True, \
-        normalization='valid', name="cls_prob_%d" % rolling_idx)
-    loc_loss_ = mx.symbol.smooth_l1(name="loc_loss__%d" % rolling_idx, \
-        data=loc_target_mask * (loc_preds - loc_target), scalar=1.0)
-    loc_loss = mx.symbol.MakeLoss(loc_loss_, grad_scale=1., \
-        normalization='valid', name="loc_loss_%d" % rolling_idx)
-
-    # monitoring training status
-    cls_label = mx.symbol.MakeLoss(
-        data=cls_target, grad_scale=0, name="cls_label_%d" % rolling_idx)
-    det = mx.contrib.symbol.MultiBoxDetection(*[cls_prob, loc_preds, anchor_boxes], \
-        name="detection_%d" % rolling_idx, nms_threshold=nms_thresh, force_suppress=force_suppress,
+    cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode='channel', \
+        name='cls_prob')
+    out = mx.contrib.symbol.MultiBoxDetection(*[cls_prob, loc_preds, anchor_boxes], \
+        name="detection", nms_threshold=nms_thresh, force_suppress=force_suppress,
         variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
-    det = mx.symbol.MakeLoss(data=det, grad_scale=0, name="det_out_%d" % rolling_idx)
 
-    # group output
-    out = mx.symbol.Group([cls_prob, loc_loss, cls_label, det])
+    outputs = [out]
 
-    return out
+    for roll_idx in range(1, rolling_time + 1):
+        roll_layers = create_rolling_struct(layers, num_outputs=num_outputs, odd=odd,
+            rolling_rate=rolling_rate, roll_idx=roll_idx, conv2=False, normalize=True)
+        out = add_multibox_for_extra(roll_layers, num_classes=num_classes,
+            num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
+            steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
+            rolling_idx=roll_idx)
+
+        outputs.append(out)
+
+    return outputs
