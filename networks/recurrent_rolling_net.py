@@ -233,7 +233,7 @@ def get_symbol_rolling_train(network,
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
     # group output
-    out = add_forawrd_and_loss_for_extra(layers, label=label, num_classes=num_classes,
+    out = add_multibox_and_loss_for_extra(layers, label=label, num_classes=num_classes,
         num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
         steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
         rolling_idx=0)
@@ -244,7 +244,7 @@ def get_symbol_rolling_train(network,
     for roll_idx in range(1, rolling_time + 1):
         roll_layers = create_rolling_struct(layers, num_outputs=num_outputs, odd=odd,
             rolling_rate=rolling_rate, roll_idx=roll_idx, conv2=False, normalize=True)
-        out = add_forawrd_and_loss_for_extra(roll_layers, label=label, num_classes=num_classes,
+        out = add_multibox_and_loss_for_extra(roll_layers, label=label, num_classes=num_classes,
             num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
             steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
             rolling_idx=roll_idx)
@@ -254,7 +254,7 @@ def get_symbol_rolling_train(network,
     return outputs
 
 
-def add_forawrd_and_loss_for_extra(extra_layers, label, num_classes, num_filters,
+def add_multibox_and_loss_for_extra(extra_layers, label, num_classes, num_filters,
         sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
         force_suppress=False, nms_topk=400, rolling_idx=0, **kwargs):
 
