@@ -283,3 +283,74 @@ class VOC07MApMetric(MApMetric):
                 p = np.max(prec[rec >= t])
             ap += p / 11.
         return ap
+
+
+class RollingMApMetric(mx.metric.EvalMetric):
+    """ Calculate mean AP of several rolling layers for object task
+
+    ## Parameters
+    num_rolling: int
+        number of rolling
+    ovp_thresh : float
+        overlap threshold for TP
+    use_difficult : boolean
+        use difficult ground-truths if applicable, otherwise just ignore
+    class_names : list of str
+        optional, if provided, will print out AP for each class
+    pred_idx : int
+        prediction index in network output list
+    """
+
+    def __init__(self, num_rolling, ovp_thresh=0.5, use_difficult=False,
+        class_names=None, pred_idx=0):
+
+        super(RollingMApMetric, self).__init__("Rolling_mAP")
+        self.num_rolling = num_rolling
+        self.eval_metrics = [MApMetric(ovp_thresh=ovp_thresh, use_difficult=use_difficult,
+            class_names=class_names, pred_idx=pred_idx)] * self.num_rolling
+        self.reset()
+
+    def reset(self):
+        """Clear the internal statistics to initial state."""
+        for metric in self.eval_metrics:
+            metric.reset()
+
+    def get(self):
+        """ Get the current evaluation result.
+        Override the default behavior.
+
+        ## Returns
+        result: list of tuples
+            evaluation of several rolling layers
+            each tuple contains:
+
+            rolling_idx: int
+                idx of the evalutaion result of rolling layer
+            name: str
+                name of the metric
+            value: float
+                value of the evalutaion
+        """
+        result = []
+        for idx, metric in enumerate(self.eval_metrics):
+            result.append((idx, metric.get()))
+        return result
+
+    def update(self, labels, preds):
+        """ Update internal records.
+        ## Params:
+        labels: mx.nd.array (n * 6) or (n * 5), difficult column is optional
+            2-d array of ground-truths, n objects(id-xmin-ymin-xmax-ymax-[difficult])
+        preds: mx.nd.array (num_rolling * m * 6)
+            3-d array of detections, num_rolling layers of  m objects(id-score-xmin-ymin-xmax-ymax)
+        """
+        assert len(preds) == len(self.eval_metrics)
+        for (pred, metric) in zip(preds, self.eval_metrics):
+            metric.update(labels, pred)
+
+class RollingVOC07MApMetric(RollingMApMetric):
+    """ Rolling Mean average precision metric for PASCAL V0C 07 dataset """
+
+    def __init__(self, *args, **kwargs):
+        super(RollingVOC07MApMetric, self).__init__(*args, **kwargs)
+        self.eval_metrics = [VOC07MApMetric(*args, **kwargs)] * self.num_rolling

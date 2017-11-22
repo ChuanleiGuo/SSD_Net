@@ -64,3 +64,44 @@ class MultiBoxMetric(mx.metric.EvalMetric):
             values = [x / y if y != 0 else float('nan') \
                 for x, y in zip(self.sum_metric, self.num_inst)]
             return (names, values)
+
+
+class RollingMultiBoxMetric(mx.metric.EvalMetric):
+    """Calculate metrics for Rolling Multibox training """
+    def __init__(self, num_rolling, eps=1e-8):
+        super(RollingMultiBoxMetric, self).__init__("RollingMultiBox")
+        self.num_rolling = num_rolling
+        self.multibox_metrics = [MultiBoxMetric(eps)] * self.num_rolling
+        self.reset()
+
+    def reset(self):
+        """ override reset behavior """
+        for metric in self.multibox_metrics:
+            metric.reset()
+
+    def update(self, labels, preds):
+        """ Implementation of updating metrics """
+        assert len(preds) == len(self.multibox_metrics)
+        for (pred, metric) in zip(preds, self.multibox_metrics):
+            metric.update(labels, pred)
+
+    def get(self):
+        """ Get the current evaluation result.
+        Override the default behavior.
+
+        ## Returns
+        result: list of tuples
+            evaluation of several rolling layers
+            each tuple contains:
+
+            rolling_idx: int
+                idx of the evalutaion result of rolling layer
+            name: str
+                name of the metric
+            value: float
+                value of the evalutaion
+        """
+        result = []
+        for idx, metric in enumerate(self.multibox_metrics):
+            result.append((idx, metric.get()))
+        return result
