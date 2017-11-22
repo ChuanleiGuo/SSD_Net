@@ -207,6 +207,7 @@ def multibox_layer(from_layers,
     cls_preds : classification prediction
     anchor_boxes : generated anchor boxes
     """
+
     assert len(from_layers) > 0, "from_layers must not be empty list"
     assert num_classes > 0, \
         "num_classes {} must be larger than 0".format(num_classes)
@@ -254,7 +255,7 @@ def multibox_layer(from_layers,
                 mode="channel", name="{}_norm".format(from_name))
             scale = mx.symbol.Variable(
                 name="{}_scale".format(from_name),
-                shape=(1, num_channels.pop(0), 1, 1),
+                shape=(1, num_channels[0], 1, 1),
                 init=mx.init.Constant(normalization[k]),
                 attr={
                     '__wd_mult__': '0.1'

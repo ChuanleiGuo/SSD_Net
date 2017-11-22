@@ -142,7 +142,7 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
                     num_group=num_out, kernel=int(2 * factor - factor % 2),
                     pad=int(ceil((factor - 1) / 2.)), stride=int(factor),
                     name=o_layer_name, no_bias=False)
-            f_layer.append(o_layer)
+            f_layers.append(o_layer)
 
         o_layer_name = "%s_concat_%s" % (from_layer_names[i], roll_idx)
         o_layer = mx.sym.concat(*f_layers, dim=1, name=o_layer_name)
@@ -296,7 +296,7 @@ def get_symbol_rolling_train(network,
 
     # Rolling Layers
     for roll_idx in range(1, rolling_time + 1):
-        roll_layers = create_rolling_struct(layers, num_outputs=num_outputs, odd=odd,
+        roll_layers = create_rolling_struct(layers, num_outputs=[256] * 7, odd=[0] * 7,
             rolling_rate=rolling_rate, roll_idx=roll_idx, conv2=False, normalize=True)
         out = add_multibox_and_loss_for_extra(roll_layers, label=label, num_classes=num_classes,
             num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
