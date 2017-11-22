@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 import mxnet as mx
 from .common import multi_layer_feature, multibox_layer
-from .recurrent_rolling_net import get_rolling_network_car
 
 
 def import_module(module_name):
