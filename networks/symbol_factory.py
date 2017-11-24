@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import logging
 from . import symbol_builder
+from .recurrent_rolling_net import get_symbol_rolling_train, get_symbol_rolling_test
 
 
 def get_config(network, data_shape, **kwargs):
@@ -110,7 +111,7 @@ def get_config(network, data_shape, **kwargs):
         raise NotImplementedError(msg)
 
 
-def get_symbol_train(network, data_shape, **kwargs):
+def get_symbol_train(network, data_shape, rolling=False, rolling_time=4, **kwargs):
     """Wrapper for get symbol for train
 
     Parameters
@@ -127,10 +128,14 @@ def get_symbol_train(network, data_shape, **kwargs):
         return symbol_builder.import_module(network).get_symbol_train(**kwargs)
     config = get_config(network, data_shape, **kwargs).copy()
     config.update(kwargs)
-    return symbol_builder.get_symbol_train(**config)
+
+    if rolling:
+        return get_symbol_rolling_train(rolling_time, **config)
+    else:
+        return symbol_builder.get_symbol_train(**config)
 
 
-def get_symbol(network, data_shape, **kwargs):
+def get_symbol(network, data_shape, rolling=False, **kwargs):
     """Wrapper for get symbol for test
 
     Parameters
@@ -147,4 +152,8 @@ def get_symbol(network, data_shape, **kwargs):
         return symbol_builder.import_module(network).get_symbol(**kwargs)
     config = get_config(network, data_shape, **kwargs).copy()
     config.update(kwargs)
-    return symbol_builder.get_symbol(**config)
+
+    if rolling:
+        return get_symbol_rolling_test(**config)
+    else:
+        return symbol_builder.get_symbol(**config)

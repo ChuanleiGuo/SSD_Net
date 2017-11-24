@@ -13,15 +13,8 @@ def import_module(module_name):
     sys.path.append(os.path.dirname(__file__))
     return importlib.import_module(module_name)
 
-from networks.symbol_factory import get_symbol_train
 
-rolling_time = 4
 rolling_rate = 0.075
-gpus = "0,1,2,3"
-gpulist = gpus.split(",")
-num_gpus = len(gpulist)
-batch_size = 4
-num_classes = 2
 
 resize_height, resize_width = 2560, 768
 min_dim = min(resize_width, resize_height)
@@ -217,7 +210,9 @@ def add_multibox_for_extra(extra_layers, num_classes, num_filters,
     return out
 
 
-def get_symbol_rolling_train(network,
+def get_symbol_rolling_train(
+                            rolling_time,
+                            network,
                             num_classes,
                             from_layers,
                             num_filters,
@@ -308,6 +303,7 @@ def get_symbol_rolling_train(network,
     return outputs
 
 def get_symbol_rolling_test(
+                rolling_time,
                 network,
                 num_classes,
                 from_layers,

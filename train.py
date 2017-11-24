@@ -232,6 +232,18 @@ def parse_args():
         type=bool,
         default=True,
         help='use PASCAL VOC 07 11-point metric')
+    parser.add_argument(
+        '--rolling',
+        dest='rolling',
+        type=bool,
+        default=False,
+        help='whether rolling')
+    parser.add_argument(
+        '--rolling_time',
+        dest='rolling_time',
+        type=int,
+        default=4,
+        help='rolling time of the rolling structure')
     args = parser.parse_args()
     return args
 
@@ -289,6 +301,8 @@ if __name__ == '__main__':
         freeze_layer_pattern=args.freeze_pattern,
         iter_monitor=args.monitor,
         monitor_pattern=args.monitor_pattern,
+        rolling=args.rolling,
+        rolling_time=args.rolling_time,
         log_file=args.log_file,
         nms_thresh=args.nms_thresh,
         force_nms=args.force_nms,

@@ -5,8 +5,8 @@ import importlib
 import re
 import mxnet as mx
 from dataset.iterator import DetRecordIter
-from train.metric import MultiBoxMetric
-from evaluate.eval_metric import MApMetric, VOC07MApMetric
+from train.metric import MultiBoxMetric, RollingMultiBoxMetric
+from evaluate.eval_metric import MApMetric, VOC07MApMetric, RollingMApMetric, RollingVOC07MApMetric
 from config.config import cfg
 from networks.symbol_factory import get_symbol_train
 
@@ -114,6 +114,8 @@ def train_net(net,
               val_list="",
               iter_monitor=0,
               monitor_pattern=".*",
+              rolling=False,
+              rolling_time=4,
               log_file=None):
     """
     Wrapper for training phase.
@@ -180,6 +182,10 @@ def train_net(net,
         monitor internal stats in networks if > 0, specified by monitor_pattern
     monitor_pattern : str
         regex pattern for monitoring network stats
+    rolling: Boolean
+        whether to make rolling network
+    rolling_time: int
+        rolling time
     log_file : str
         log to file if enabled
     """
@@ -192,7 +198,10 @@ def train_net(net,
         logger.addHandler(fh)
 
     # check args
-    prefix = prefix + net + "_"
+    if rolling:
+        prefix = prefix + "rolling_" + net + "_"
+    else:
+        prefix = prefix + net + "_"
 
     if isinstance(data_shape, int):
         data_shape = (3, data_shape, data_shape)
@@ -229,6 +238,8 @@ def train_net(net,
     net = get_symbol_train(
         net,
         data_shape[1],
+        rolling=rolling,           # MARK: whether rolling; added param
+        rolling_time=4,
         num_classes=num_classes,
         nms_thresh=nms_thresh,
         force_suppress=force_suppress,
@@ -316,16 +327,24 @@ def train_net(net,
 
     # run fit net, every n epochs we run evaluation network to get mAP
     if voc07_metric:
-        valid_metric = VOC07MApMetric(
-            ovp_thresh, use_difficult, class_names, pred_idx=3)
+        if rolling:
+            valid_metric = RollingVOC07MApMetric(rolling_time, ovp_thresh,
+                use_difficult, class_names, pred_idx=3)
+        else:
+            valid_metric = VOC07MApMetric(
+                ovp_thresh, use_difficult, class_names, pred_idx=3)
     else:
-        valid_metric = MApMetric(
-            ovp_thresh, use_difficult, class_names, pred_idx=3)
+        if rolling:
+            valid_metric = RollingMApMetric(rolling_time, ovp_thresh,
+                use_difficult, class_names, pred_idx=3)
+        else:
+            valid_metric = MApMetric(
+                ovp_thresh, use_difficult, class_names, pred_idx=3)
 
     mod.fit(
         train_iter,
         val_iter,
-        eval_metric=MultiBoxMetric(),
+        eval_metric=MultiBoxMetric() if not rolling else RollingMultiBoxMetric(rolling_time),
         validation_metric=valid_metric,
         batch_end_callback=batch_end_callback,
         epoch_end_callback=epoch_end_callback,
