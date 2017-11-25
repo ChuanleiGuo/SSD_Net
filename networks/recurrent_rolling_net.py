@@ -394,4 +394,4 @@ def get_symbol_rolling_test(
 
         outputs.append(out)
 
-    return outputs
+    return mx.sym.Group(outputs)
