@@ -109,16 +109,19 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
 
             if odd[i]:
                 o_layer_name = "%s_deconv" % f_layer.name
+                k = int(2 * factor - factor % 2)
+                p = int(np.ceil((factor - 1) / 2.))
+                f = int(factor)
                 o_layer = mx.sym.Deconvolution(data=o_layer, num_filter=num_out,
-                    num_group=num_out, kernel=int(2 * factor - factor % 2),
-                    pad=int(np.ceil((factor - 1) / 2.)), stride=int(factor),
+                    num_group=num_out, kernel=(k, k),
+                    pad=(p, p), stride=(f, f),
                     name=o_layer_name, no_bias=True)
                 temp_layer = f_layer
                 f_layer = o_layer
                 o_layer_name = "%s_deconv" % temp_layer.name
                 if not conv2:
                     o_layer = mx.sym.Pooling(data=o_layer, pool_type="avg",
-                        kernel=2, stride=1, name=o_layer_name)
+                        kernel=(2, 2), stride=(1, 1), name=o_layer_name)
                 else:
                     bias = mx.sym.Variable(
                         name=o_layer_name+"_bias",
@@ -126,14 +129,18 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
                         attr={
                             '__lr_mult__': '2.0'
                         })
-                    o_layer = mx.sym.Convolution(o_layer, num_filter=num_out,
+                    o_layer = mx.sym.Convolution(o_layer, num_filter=num_out, kernel=(1, 1), pad=(1, 1),
                         name=o_layer_name, bias=bias)
                     o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
             else:
                 o_layer_name = "%s_deconv" % f_layer.name
+
+                k = int(2 * factor - factor % 2)
+                p = int(ceil((factor - 1) / 2.))
+                f = int(factor)
                 o_layer = mx.sym.Deconvolution(data=o_layer, num_filter=num_out,
-                    num_group=num_out, kernel=int(2 * factor - factor % 2),
-                    pad=int(ceil((factor - 1) / 2.)), stride=int(factor),
+                    num_group=num_out, kernel=(k, k),
+                    pad=(p, p), stride=(f, f),
                     name=o_layer_name, no_bias=False)
             f_layers.append(o_layer)
 
@@ -148,7 +155,7 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
                 '__lr_mult__': '2.0'
             })
         o_layer = mx.sym.Convolution(data=o_layer, num_filter=num_outputs[i],
-            kernel=1, stride=1, name=o_layer_name, bias=bias)
+            kernel=(1, 1), stride=(1, 1), name=o_layer_name, bias=bias)
         o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
 
         roll_layers.append(o_layer)
