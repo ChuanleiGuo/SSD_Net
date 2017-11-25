@@ -355,6 +355,9 @@ class RollingMApMetric(mx.metric.EvalMetric):
 class RollingVOC07MApMetric(RollingMApMetric):
     """ Rolling Mean average precision metric for PASCAL V0C 07 dataset """
 
-    def __init__(self, *args, **kwargs):
-        super(RollingVOC07MApMetric, self).__init__(*args, **kwargs)
-        self.eval_metrics = [VOC07MApMetric(*args, **kwargs)] * self.num_rolling
+    def __init__(self, num_rolling, ovp_thresh=0.5, use_difficult=False,
+            class_names=None, pred_idx=0):
+        super(RollingVOC07MApMetric, self).__init__(num_rolling, ovp_thresh,
+            use_difficult, class_names, pred_idx)
+        self.eval_metrics = [VOC07MApMetric(ovp_thresh,
+            use_difficult, class_names, pred_idx)] * self.num_rolling
