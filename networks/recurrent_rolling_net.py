@@ -300,7 +300,7 @@ def get_symbol_rolling_train(
 
         outputs.append(out)
 
-    return outputs
+    return mx.symbol.Group(outputs)
 
 def get_symbol_rolling_test(
                 rolling_time,
