@@ -291,7 +291,7 @@ def get_symbol_rolling_train(
 
     # Rolling Layers
     for roll_idx in range(1, rolling_time + 1):
-        roll_layers = create_rolling_struct(layers, num_outputs=[256] * 7, odd=[0] * 7,
+        roll_layers = create_rolling_struct(layers, num_outputs=[256] * len(layers), odd=[0] * len(layers),
             rolling_rate=rolling_rate, roll_idx=roll_idx, conv2=False, normalize=True)
         out = add_multibox_and_loss_for_extra(roll_layers, label=label, num_classes=num_classes,
             num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
