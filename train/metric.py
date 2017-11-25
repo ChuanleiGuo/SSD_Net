@@ -69,10 +69,10 @@ class MultiBoxMetric(mx.metric.EvalMetric):
 class RollingMultiBoxMetric(mx.metric.EvalMetric):
     """Calculate metrics for Rolling Multibox training """
     def __init__(self, num_rolling, eps=1e-8):
-        super(RollingMultiBoxMetric, self).__init__("RollingMultiBox")
         self.num_rolling = num_rolling
         self.multibox_metrics = [MultiBoxMetric(eps)] * self.num_rolling
         self.reset()
+        super(RollingMultiBoxMetric, self).__init__("RollingMultiBox")
 
     def reset(self):
         """ override reset behavior """
