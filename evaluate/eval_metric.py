@@ -304,11 +304,15 @@ class RollingMApMetric(mx.metric.EvalMetric):
     def __init__(self, num_rolling, ovp_thresh=0.5, use_difficult=False,
         class_names=None, pred_idx=0):
 
-        super(RollingMApMetric, self).__init__("Rolling_mAP")
         self.num_rolling = num_rolling
+        self.ovp_thresh = ovp_thresh
+        self.use_difficult = use_difficult
+        self.class_names = class_names
+        self.pred_idx = pred_idx
         self.eval_metrics = [MApMetric(ovp_thresh=ovp_thresh, use_difficult=use_difficult,
             class_names=class_names, pred_idx=pred_idx)] * self.num_rolling
-        self.reset()
+
+        super(RollingMApMetric, self).__init__("Rolling_mAP")
 
     def reset(self):
         """Clear the internal statistics to initial state."""
