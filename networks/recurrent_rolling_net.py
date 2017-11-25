@@ -81,7 +81,7 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
                     '__lr_mult__': '2.0'
                 })
             o_layer = mx.sym.Convolution(data=f_layer,
-                num_filter=num_out, kernel=(1, 1), stride=(1, 1),
+                num_filter=num_out, kernel=(1, 1), stride=(1, 1), pad=(0, 0),
                 name=o_layer_name, bias=bias)
             o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
             o_layer = mx.sym.Pooling(data=o_layer, pool_type="max", kernel=(2, 2),
@@ -101,7 +101,7 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
                     '__lr_mult__': '2.0'
                 })
             o_layer = mx.sym.Convolution(data=f_layer,
-                num_filter=num_out, kernel=(1, 1), stride=(1, 1),
+                num_filter=num_out, kernel=(1, 1), stride=(1, 1), pad=(0, 0),
                 name=o_layer_name, bias=bias)
             o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
 
@@ -130,7 +130,7 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
                             '__lr_mult__': '2.0'
                         })
                     o_layer = mx.sym.Convolution(o_layer, num_filter=num_out, kernel=(1, 1), pad=(1, 1),
-                        name=o_layer_name, bias=bias)
+                        stride=(1, 1), name=o_layer_name, bias=bias)
                     o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
             else:
                 o_layer_name = "%s_deconv" % f_layer.name
@@ -155,7 +155,7 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
                 '__lr_mult__': '2.0'
             })
         o_layer = mx.sym.Convolution(data=o_layer, num_filter=num_outputs[i],
-            kernel=(1, 1), stride=(1, 1), name=o_layer_name, bias=bias)
+            kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=o_layer_name, bias=bias)
         o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
 
         roll_layers.append(o_layer)
