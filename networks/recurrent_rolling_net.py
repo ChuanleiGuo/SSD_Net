@@ -281,7 +281,6 @@ def add_multibox_for_extra(extra_layers, num_classes, num_filters,
 
 def get_symbol_rolling_train(
                             rolling_time,
-                            data_shape,
                             network,
                             num_classes,
                             from_layers,
@@ -361,7 +360,7 @@ def get_symbol_rolling_train(
 
     # Rolling Layers
     for roll_idx in range(1, rolling_time + 1):
-        roll_layers = create_rolling_struct(layers, data_shape, num_filters=num_filters, \
+        roll_layers = create_rolling_struct(layers, kwargs["data_shape"], num_filters=num_filters, \
             strides=strides, pads=pads, rolling_rate=rolling_rate, roll_idx=roll_idx,
             conv2=False, normalize=True)
 
@@ -377,7 +376,6 @@ def get_symbol_rolling_train(
 
 def get_symbol_rolling_test(
                 rolling_time,
-                data_shape,
                 network,
                 num_classes,
                 from_layers,
@@ -459,7 +457,7 @@ def get_symbol_rolling_test(
     outputs = [out]
 
     for roll_idx in range(1, rolling_time + 1):
-        roll_layers = create_rolling_struct(layers, data_shape, num_filters=num_filters,
+        roll_layers = create_rolling_struct(layers, kwargs["data_shape"], num_filters=num_filters,
             strides=strides, pads=pads, rolling_rate=rolling_rate, roll_idx=roll_idx,
             conv2=False, normalize=True)
         out = add_multibox_for_extra(roll_layers, num_classes=num_classes,
