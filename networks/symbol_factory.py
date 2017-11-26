@@ -20,7 +20,7 @@ def get_config(network, data_shape, **kwargs):
     if network == 'vgg16_reduced':
         if data_shape >= 448:
             from_layers = ['relu4_3', 'relu7', '', '', '', '', '']
-            num_filters = [512, -1, 512, 256, 256, 256, 256]
+            num_filters = [512, 1024, 512, 256, 256, 256, 256]
             strides = [-1, -1, 2, 2, 2, 2, 1]
             pads = [-1, -1, 1, 1, 1, 1, 1]
             sizes = [[.07, .1025], [.15,.2121], [.3, .3674], [.45, .5196], [.6, .6708], \
@@ -33,7 +33,7 @@ def get_config(network, data_shape, **kwargs):
             ]
         else:
             from_layers = ['relu4_3', 'relu7', '', '', '', '']
-            num_filters = [512, -1, 512, 256, 256, 256]
+            num_filters = [512, 1024, 512, 256, 256, 256]
             strides = [-1, -1, 2, 2, 1, 1]
             pads = [-1, -1, 1, 1, 0, 0]
             sizes = [[.1, .141], [.2, .272], [.37, .447], [.54, .619],
@@ -130,12 +130,12 @@ def get_symbol_train(network, data_shape, rolling=False, rolling_time=4, **kwarg
     config.update(kwargs)
 
     if rolling:
-        return get_symbol_rolling_train(rolling_time, **config)
+        return get_symbol_rolling_train(rolling_time, data_shape, **config)
     else:
         return symbol_builder.get_symbol_train(**config)
 
 
-def get_symbol(network, data_shape, rolling=False, **kwargs):
+def get_symbol(network, data_shape, rolling=False, rolling_time=4, **kwargs):
     """Wrapper for get symbol for test
 
     Parameters
@@ -154,6 +154,6 @@ def get_symbol(network, data_shape, rolling=False, **kwargs):
     config.update(kwargs)
 
     if rolling:
-        return get_symbol_rolling_test(**config)
+        return get_symbol_rolling_test(rolling_time, data_shape, **config)
     else:
         return symbol_builder.get_symbol(**config)

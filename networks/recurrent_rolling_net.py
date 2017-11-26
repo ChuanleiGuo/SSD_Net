@@ -22,71 +22,44 @@ min_dim = min(resize_width, resize_height)
 # in percent %
 min_ratio = 15
 max_ratio = 85
-# TODO: change the implementation of using hard code
-step = int(floor((max_ratio - min_ratio) / (5 - 2)))
-min_sizes = []
-max_sizes = []
-for ratio in range(min_ratio, max_ratio + 1, step):
-    min_sizes.append(min_dim * ratio / 100.)
-    max_sizes.append(min_dim * (ratio + step) / 100.)
-min_sizes = [min_dim * 6.7 / 100.] + min_sizes
-max_sizes = [[]] + max_sizes
-aspect_ratios = [[2], [2, 3], [2, 3], [2, 3], [2, 3]]
-
-normalizations = [20, -1, -1, -1, -1]
-normalizations2 = [-1, -1, -1, -1, -1]
-num_outputs=[256,256,256,256,256]
-odd=[0,0,0,0,0]
 rolling_rate = 0.075
 
-def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
-        rolling_rate=0.25, roll_idx=1, conv2=False, normalize=True):
+def _get_sym_output_shape(sym, input_shape):
+    _, out_shapes, _ = sym.infer_shape(data=input_shape)
+    return out_shapes[0][2: ]
 
-    """ Build rolling structure between `from_layers`
-    ## Prameter
-    from_layers: mx.symbol
-        layers used to contruct rolling structure
-    num_outputs: ints
-        filters in different layers, same length of `from_layers`
-    odd:
-
-    rolling_rate: float
-    roll_idx: rolling_idx to start
-    conv2: whether using conv while rolling
-    normalize: whether to normalize layers
-    """
-
-    roll_layers = []
-    factor = 2
+def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
+        rolling_rate, roll_idx, conv2=False, normalize=True):
+    # strides 为 -1 时，实现方法，根据两层之间的尺寸比值
+    rolling_layers = []
     from_layer_names = [l.name for l in from_layers]
-    assert len(from_layer_names) == len(num_outputs)
+    assert len(from_layer_names) == len(num_filters)
 
     if roll_idx == 1:
         if normalize:
-            from_layer_names[0] = "%s_norm" % from_layers[0].name
+            from_layer_names[0] = "%s_norm" % (from_layer_names[0])
     else:
         for i in range(len(from_layer_names)):
-            from_layer_names[i] = "%s_%d" % (from_layers[i].name, roll_idx)
+            from_layer_names[i] = "%s_%d" % (from_layer_names[i], roll_idx)
     for i in range(len(from_layers)):
         f_layers = []
-        num_out = int(num_outputs[i] * rolling_rate)
+        num_filter = int(num_filters[i] * rolling_rate)
 
         if i > 0:
             f_layer = from_layers[i - 1]
-            o_layer_name = "%s_r%d" % (from_layer_names[i], roll_idx)
-            bias = mx.sym.Variable(
-                name=o_layer_name+"_bias",
-                init=mx.init.Constant(0.0),
-                attr={
-                    '__lr_mult__': '2.0'
-                })
-            o_layer = mx.sym.Convolution(data=f_layer,
-                num_filter=num_out, kernel=(1, 1), stride=(1, 1), pad=(0, 0),
-                name=o_layer_name, bias=bias)
-            o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
-            o_layer = mx.sym.Pooling(data=o_layer, pool_type="max", kernel=(2, 2),
-                stride=(2, 2), name="pool_" + o_layer_name)
-
+            o_layer_name = "%s_r%d" % (from_layer_names[i - 1], roll_idx)
+            if strides[i] == -1:
+                o_layer = mx.sym.Convolution(data=f_layer, num_filter=num_filter, \
+                    stride=(1, 1), pad=(0, 0), kernel=(1, 1), name=o_layer_name)
+                o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
+                o_layer = mx.sym.Pooling(data=o_layer, pool_type="max",
+                    kernel=(2, 2), stride=(2, 2), name="pool_"+o_layer_name)
+            else:
+                o_layer = mx.sym.Convolution(data=f_layer, num_filter=num_filter, \
+                    stride=(1, 1), pad=(0, 0), kernel=(1, 1), name=o_layer_name)
+                s, p = strides[i], pads[i]
+                o_layer = mx.sym.Convolution(data=o_layer, num_filter=num_filter,
+                    stride=(s, s), pad=(p, p), kernel=(3, 3), name="conv3x3"+o_layer_name)
             f_layers.append(o_layer)
 
         f_layers.append(from_layers[i])
@@ -94,73 +67,162 @@ def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
         if i < len(from_layers) - 1:
             f_layer = from_layers[i + 1]
             o_layer_name = "%s_l%d" % (from_layer_names[i + 1], roll_idx)
-            bias = mx.sym.Variable(
-                name=o_layer_name+"_bias",
-                init=mx.init.Constant(0.0),
-                attr={
-                    '__lr_mult__': '2.0'
-                })
-            o_layer = mx.sym.Convolution(data=f_layer,
-                num_filter=num_out, kernel=(1, 1), stride=(1, 1), pad=(0, 0),
-                name=o_layer_name, bias=bias)
-            o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
+            o_layer = mx.sym.Convolution(data=f_layer, num_filter=num_filter, \
+                kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=o_layer_name)
+            o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
 
-            f_layer = o_layer
-
-            if odd[i]:
-                o_layer_name = "%s_deconv" % f_layer.name
-                k = int(2 * factor - factor % 2)
-                p = int(np.ceil((factor - 1) / 2.))
-                f = int(factor)
-                o_layer = mx.sym.Deconvolution(data=o_layer, num_filter=num_out,
-                    num_group=num_out, kernel=(k, k),
-                    pad=(p, p), stride=(f, f),
-                    name=o_layer_name, no_bias=True)
-                temp_layer = f_layer
-                f_layer = o_layer
-                o_layer_name = "%s_deconv" % temp_layer.name
-                if not conv2:
-                    o_layer = mx.sym.Pooling(data=o_layer, pool_type="avg",
-                        kernel=(2, 2), stride=(1, 1), name=o_layer_name)
-                else:
-                    bias = mx.sym.Variable(
-                        name=o_layer_name+"_bias",
-                        init=mx.init.Constant(0.0),
-                        attr={
-                            '__lr_mult__': '2.0'
-                        })
-                    o_layer = mx.sym.Convolution(o_layer, num_filter=num_out, kernel=(1, 1), pad=(1, 1),
-                        stride=(1, 1), name=o_layer_name, bias=bias)
-                    o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
-            else:
-                o_layer_name = "%s_deconv" % f_layer.name
-
-                k = int(2 * factor - factor % 2)
+            next_layer_output_size = _get_sym_output_shape(
+                f_layer, (20, 3, data_shape, data_shape))
+            layer_output_size = _get_sym_output_shape(
+                from_layers[i], (20, 3, data_shape, data_shape))
+            isTwice = (layer_output_size[0] / next_layer_output_size[0] == 2)
+            if strides[i + 1] == -1 or isTwice:
+                factor = 2
                 p = int(ceil((factor - 1) / 2.))
-                f = int(factor)
-                o_layer = mx.sym.Deconvolution(data=o_layer, num_filter=num_out,
-                    num_group=num_out, kernel=(k, k),
-                    pad=(p, p), stride=(f, f),
-                    name=o_layer_name, no_bias=False)
+                k = int(2 * factor - factor % 2)
+                s = int(factor)
+            else:
+                s, p = strides[i + 1], pads[i + 1]
+                k = 3
+            o_layer = mx.sym.Deconvolution(data=o_layer, num_filter=num_filter, kernel=(k, k), \
+                stride=(s, s), pad=(p, p), name="deconv_"+o_layer_name)
+
             f_layers.append(o_layer)
 
         o_layer_name = "%s_concat_%s" % (from_layer_names[i], roll_idx)
-        o_layer = mx.sym.concat(*f_layers, dim=1, name=o_layer_name)
-
+        o_layer = mx.sym.concat(*f_layers, dim=1)
         o_layer_name = "%s_%d" % (from_layer_names[i], roll_idx + 1)
-        bias = mx.sym.Variable(
-            name=o_layer_name+"_bias",
-            init=mx.init.Constant(0.0),
-            attr={
-                '__lr_mult__': '2.0'
-            })
-        o_layer = mx.sym.Convolution(data=o_layer, num_filter=num_outputs[i],
-            kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=o_layer_name, bias=bias)
-        o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
+        o_layer = mx.sym.Convolution(data=o_layer, num_filter=num_filters[i], \
+            kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=o_layer_name)
+        o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
 
-        roll_layers.append(o_layer)
+        rolling_layers.append(o_layer)
 
-    return roll_layers
+    return rolling_layers
+
+
+# def create_rolling_struct(from_layers=[], num_outputs=[], odd=[],
+#         rolling_rate=0.25, roll_idx=1, conv2=False, normalize=True):
+
+#     """ Build rolling structure between `from_layers`
+#     ## Prameter
+#     from_layers: mx.symbol
+#         layers used to contruct rolling structure
+#     num_outputs: ints
+#         filters in different layers, same length of `from_layers`
+#     odd:
+
+#     rolling_rate: float
+#     roll_idx: rolling_idx to start
+#     conv2: whether using conv while rolling
+#     normalize: whether to normalize layers
+#     """
+
+#     roll_layers = []
+#     factor = 2
+#     from_layer_names = [l.name for l in from_layers]
+#     assert len(from_layer_names) == len(num_outputs)
+
+#     if roll_idx == 1:
+#         if normalize:
+#             from_layer_names[0] = "%s_norm" % from_layers[0].name
+#     else:
+#         for i in range(len(from_layer_names)):
+#             from_layer_names[i] = "%s_%d" % (from_layers[i].name, roll_idx)
+#     for i in range(len(from_layers)):
+#         f_layers = []
+#         num_out = int(num_outputs[i] * rolling_rate)
+
+#         if i > 0:
+#             f_layer = from_layers[i - 1]
+#             o_layer_name = "%s_r%d" % (from_layer_names[i], roll_idx)
+#             bias = mx.sym.Variable(
+#                 name=o_layer_name+"_bias",
+#                 init=mx.init.Constant(0.0),
+#                 attr={
+#                     '__lr_mult__': '2.0'
+#                 })
+#             o_layer = mx.sym.Convolution(data=f_layer,
+#                 num_filter=num_out, kernel=(1, 1), stride=(1, 1), pad=(0, 0),
+#                 name=o_layer_name, bias=bias)
+#             o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
+#             o_layer = mx.sym.Pooling(data=o_layer, pool_type="max", kernel=(2, 2),
+#                 stride=(2, 2), name="pool_" + o_layer_name)
+
+#             f_layers.append(o_layer)
+
+#         f_layers.append(from_layers[i])
+
+#         if i < len(from_layers) - 1:
+#             f_layer = from_layers[i + 1]
+#             o_layer_name = "%s_l%d" % (from_layer_names[i + 1], roll_idx)
+#             bias = mx.sym.Variable(
+#                 name=o_layer_name+"_bias",
+#                 init=mx.init.Constant(0.0),
+#                 attr={
+#                     '__lr_mult__': '2.0'
+#                 })
+#             o_layer = mx.sym.Convolution(data=f_layer,
+#                 num_filter=num_out, kernel=(1, 1), stride=(1, 1), pad=(0, 0),
+#                 name=o_layer_name, bias=bias)
+#             o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
+
+#             f_layer = o_layer
+
+#             if odd[i]:
+#                 o_layer_name = "%s_deconv" % f_layer.name
+#                 k = int(2 * factor - factor % 2)
+#                 p = int(np.ceil((factor - 1) / 2.))
+#                 f = int(factor)
+#                 o_layer = mx.sym.Deconvolution(data=o_layer, num_filter=num_out,
+#                     num_group=num_out, kernel=(k, k),
+#                     pad=(p, p), stride=(f, f),
+#                     name=o_layer_name, no_bias=True)
+#                 temp_layer = f_layer
+#                 f_layer = o_layer
+#                 o_layer_name = "%s_deconv" % temp_layer.name
+#                 if not conv2:
+#                     o_layer = mx.sym.Pooling(data=o_layer, pool_type="avg",
+#                         kernel=(2, 2), stride=(1, 1), name=o_layer_name)
+#                 else:
+#                     bias = mx.sym.Variable(
+#                         name=o_layer_name+"_bias",
+#                         init=mx.init.Constant(0.0),
+#                         attr={
+#                             '__lr_mult__': '2.0'
+#                         })
+#                     o_layer = mx.sym.Convolution(o_layer, num_filter=num_out, kernel=(1, 1), pad=(1, 1),
+#                         stride=(1, 1), name=o_layer_name, bias=bias)
+#                     o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
+#             else:
+#                 o_layer_name = "%s_deconv" % f_layer.name
+
+#                 k = int(2 * factor - factor % 2)
+#                 p = int(ceil((factor - 1) / 2.))
+#                 f = int(factor)
+#                 o_layer = mx.sym.Deconvolution(data=o_layer, num_filter=num_out,
+#                     num_group=num_out, kernel=(k, k),
+#                     pad=(p, p), stride=(f, f),
+#                     name=o_layer_name, no_bias=False)
+#             f_layers.append(o_layer)
+
+#         o_layer_name = "%s_concat_%s" % (from_layer_names[i], roll_idx)
+#         o_layer = mx.sym.concat(*f_layers, dim=1, name=o_layer_name)
+
+#         o_layer_name = "%s_%d" % (from_layer_names[i], roll_idx + 1)
+#         bias = mx.sym.Variable(
+#             name=o_layer_name+"_bias",
+#             init=mx.init.Constant(0.0),
+#             attr={
+#                 '__lr_mult__': '2.0'
+#             })
+#         o_layer = mx.sym.Convolution(data=o_layer, num_filter=num_outputs[i],
+#             kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=o_layer_name, bias=bias)
+#         o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
+
+#         roll_layers.append(o_layer)
+
+#     return roll_layers
 
 def add_multibox_and_loss_for_extra(extra_layers, label, num_classes, num_filters,
         sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
@@ -219,6 +281,7 @@ def add_multibox_for_extra(extra_layers, num_classes, num_filters,
 
 def get_symbol_rolling_train(
                             rolling_time,
+                            data_shape,
                             network,
                             num_classes,
                             from_layers,
@@ -298,8 +361,11 @@ def get_symbol_rolling_train(
 
     # Rolling Layers
     for roll_idx in range(1, rolling_time + 1):
-        roll_layers = create_rolling_struct(layers, num_outputs=[256] * len(layers), odd=[0] * len(layers),
-            rolling_rate=rolling_rate, roll_idx=roll_idx, conv2=False, normalize=True)
+        roll_layers = create_rolling_struct(layers, data_shape, num_filters=num_filters, \
+            strides=strides, pads=pads, rolling_rate=rolling_rate, roll_idx=roll_idx,
+            conv2=False, normalize=True)
+
+
         out = add_multibox_and_loss_for_extra(roll_layers, label=label, num_classes=num_classes,
             num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
             steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
@@ -311,6 +377,7 @@ def get_symbol_rolling_train(
 
 def get_symbol_rolling_test(
                 rolling_time,
+                data_shape,
                 network,
                 num_classes,
                 from_layers,
@@ -392,8 +459,9 @@ def get_symbol_rolling_test(
     outputs = [out]
 
     for roll_idx in range(1, rolling_time + 1):
-        roll_layers = create_rolling_struct(layers, num_outputs=num_outputs, odd=odd,
-            rolling_rate=rolling_rate, roll_idx=roll_idx, conv2=False, normalize=True)
+        roll_layers = create_rolling_struct(layers, data_shape, num_filters=num_filters,
+            strides=strides, pads=pads, rolling_rate=rolling_rate, roll_idx=roll_idx,
+            conv2=False, normalize=True)
         out = add_multibox_for_extra(roll_layers, num_classes=num_classes,
             num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
             steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
