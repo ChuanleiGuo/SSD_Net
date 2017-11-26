@@ -130,7 +130,7 @@ def get_symbol_train(network, data_shape, rolling=False, rolling_time=4, **kwarg
     config.update(kwargs)
 
     if rolling:
-        return get_symbol_rolling_train(rolling_time, data_shape, **config)
+        return get_symbol_rolling_train(rolling_time, **config)
     else:
         return symbol_builder.get_symbol_train(**config)
 
@@ -154,6 +154,6 @@ def get_symbol(network, data_shape, rolling=False, rolling_time=4, **kwargs):
     config.update(kwargs)
 
     if rolling:
-        return get_symbol_rolling_test(rolling_time, data_shape, **config)
+        return get_symbol_rolling_test(rolling_time, **config)
     else:
         return symbol_builder.get_symbol(**config)
