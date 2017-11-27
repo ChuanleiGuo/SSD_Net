@@ -328,14 +328,14 @@ def train_net(net,
     # run fit net, every n epochs we run evaluation network to get mAP
     if voc07_metric:
         if rolling:
-            valid_metric = RollingVOC07MApMetric(rolling_time, ovp_thresh,
+            valid_metric = RollingVOC07MApMetric(rolling_time + 1, ovp_thresh,
                 use_difficult, class_names, pred_idx=3)
         else:
             valid_metric = VOC07MApMetric(
                 ovp_thresh, use_difficult, class_names, pred_idx=3)
     else:
         if rolling:
-            valid_metric = RollingMApMetric(rolling_time, ovp_thresh,
+            valid_metric = RollingMApMetric(rolling_time + 1, ovp_thresh,
                 use_difficult, class_names, pred_idx=3)
         else:
             valid_metric = MApMetric(
@@ -344,7 +344,7 @@ def train_net(net,
     mod.fit(
         train_iter,
         val_iter,
-        eval_metric=MultiBoxMetric() if not rolling else RollingMultiBoxMetric(rolling_time),
+        eval_metric=MultiBoxMetric() if not rolling else RollingMultiBoxMetric(rolling_time + 1),
         validation_metric=valid_metric,
         batch_end_callback=batch_end_callback,
         epoch_end_callback=epoch_end_callback,

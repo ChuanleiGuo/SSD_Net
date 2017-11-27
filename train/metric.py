@@ -81,6 +81,10 @@ class RollingMultiBoxMetric(mx.metric.EvalMetric):
 
     def update(self, labels, preds):
         """ Implementation of updating metrics """
+        res = []
+        for i in range(self.num_rolling):
+            res.append(preds[i * 4: (i + 1) * 4])
+        preds = res
         assert len(preds) == len(self.multibox_metrics)
         for (pred, metric) in zip(preds, self.multibox_metrics):
             metric.update(labels, pred)
