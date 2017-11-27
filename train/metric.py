@@ -105,7 +105,11 @@ class RollingMultiBoxMetric(mx.metric.EvalMetric):
             value: float
                 value of the evalutaion
         """
-        result = []
+        names = []
+        values = []
         for idx, metric in enumerate(self.multibox_metrics):
-            result.append((idx, metric.get()))
-        return result
+            name_list, value_list = metric.get()
+            for n, v in zip(name_list, value_list):
+                names.append(n + "_" + str(idx))
+                values.append(v)
+        return (names, values)
