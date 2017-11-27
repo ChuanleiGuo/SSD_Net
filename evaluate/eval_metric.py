@@ -348,6 +348,10 @@ class RollingMApMetric(mx.metric.EvalMetric):
         preds: mx.nd.array (num_rolling * m * 6)
             3-d array of detections, num_rolling layers of  m objects(id-score-xmin-ymin-xmax-ymax)
         """
+        res = []
+        for i in range(self.num_rolling):
+            res.append(preds[i * 4: (i + 1) * 4])
+        preds = res
         assert len(preds) == len(self.eval_metrics)
         for (pred, metric) in zip(preds, self.eval_metrics):
             metric.update(labels, pred)
