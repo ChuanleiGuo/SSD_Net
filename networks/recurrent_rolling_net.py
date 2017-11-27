@@ -359,11 +359,11 @@ def get_symbol_rolling_train(
     outputs = [out]
 
     # Rolling Layers
+    last_rolling_layers = layers
     for roll_idx in range(1, rolling_time + 1):
-        roll_layers = create_rolling_struct(layers, kwargs["data_shape"], num_filters=num_filters, \
-            strides=strides, pads=pads, rolling_rate=rolling_rate, roll_idx=roll_idx,
-            conv2=False, normalize=True)
-
+        roll_layers = create_rolling_struct(last_rolling_layers, kwargs["data_shape"], \
+            num_filters=num_filters, strides=strides, pads=pads, rolling_rate=rolling_rate, \
+            roll_idx=roll_idx, conv2=False, normalize=True)
 
         out = add_multibox_and_loss_for_extra(roll_layers, label=label, num_classes=num_classes,
             num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
@@ -371,6 +371,8 @@ def get_symbol_rolling_train(
             rolling_idx=roll_idx)
 
         outputs.append(out)
+
+        last_rolling_layers = roll_layers
 
     return mx.symbol.Group(outputs)
 
