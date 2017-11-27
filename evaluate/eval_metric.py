@@ -310,7 +310,7 @@ class RollingMApMetric(mx.metric.EvalMetric):
         self.class_names = class_names
         self.pred_idx = pred_idx
         self.eval_metrics = [MApMetric(ovp_thresh=ovp_thresh, use_difficult=use_difficult,
-            class_names=class_names, pred_idx=pred_idx)] * self.num_rolling
+            class_names=class_names, pred_idx=pred_idx) for _ in range(self.num_rolling)]
 
         super(RollingMApMetric, self).__init__("Rolling_mAP")
 
@@ -368,4 +368,4 @@ class RollingVOC07MApMetric(RollingMApMetric):
         super(RollingVOC07MApMetric, self).__init__(num_rolling, ovp_thresh,
             use_difficult, class_names, pred_idx)
         self.eval_metrics = [VOC07MApMetric(ovp_thresh,
-            use_difficult, class_names, pred_idx)] * self.num_rolling
+            use_difficult, class_names, pred_idx) for _ in range(self.num_rolling)]
