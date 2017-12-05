@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 import mxnet as mx
-from .common import multi_layer_feature, multibox_layer
+from common import multi_layer_feature, multibox_layer
 
 
 def import_module(module_name):
@@ -25,6 +25,7 @@ def get_symbol_train(network,
                      nms_thresh=0.5,
                      force_suppress=False,
                      nms_topk=400,
+                     minimum_negative_samples=0,
                      **kwargs):
     """Build network symbol for training SSD
 
@@ -69,14 +70,16 @@ def get_symbol_train(network,
         whether suppress different class objects
     nms_topk : int
         apply NMS to top K detections
-
+    minimum_negative_sample: int
+        always have some negative examples, no matter how many positive there are.
+        this is useful when training on images with no ground-truth
     Returns
     -------
     mx.Symbol
 
     """
     label = mx.sym.Variable('label')
-    body = import_module(network).get_symbol(num_classes, **kwargs)
+    body = import_module(network).get_symbol(num_classes=num_classes, **kwargs)
     layers = multi_layer_feature(
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
@@ -85,8 +88,8 @@ def get_symbol_train(network,
         num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
 
     tmp = mx.contrib.symbol.MultiBoxTarget(
-        *[anchor_boxes, label, cls_preds], overlap_threshold=.5, \
-        ignore_label=-1, negative_mining_ratio=3, minimum_negative_samples=0, \
+        *[anchor_boxes, label, cls_preds], overlap_threshold=.5, ignore_label=-1, \
+        negative_mining_ratio=3, minimum_negative_samples=minimum_negative_samples, \
         negative_mining_thresh=.5, variances=(0.1, 0.1, 0.2, 0.2),
         name="multibox_target")
     loc_target = tmp[0]
@@ -178,7 +181,7 @@ def get_symbol(network,
     mx.Symbol
 
     """
-    body = import_module(network).get_symbol(num_classes, **kwargs)
+    body = import_module(network).get_symbol(num_classes=num_classes, **kwargs)
     layers = multi_layer_feature(
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
