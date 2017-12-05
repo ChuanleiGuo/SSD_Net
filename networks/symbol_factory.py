@@ -145,6 +145,40 @@ def get_config(network, data_shape, **kwargs):
         normalizations = -1
         steps = []
         return locals()
+    elif network == 'densenet121':
+        network = 'densenet'
+        data_type = 'imagenet'
+        units = [6, 12, 24, 16]
+        num_stage = 4
+        growth_rate = 32
+        bottle_neck = True
+        from_layers = ['DBstage3_concat24', 'DBstage4_concat16', '', '', '', '']
+        num_filters = [-1, -1, 256, 256, 256, 128]
+        strides = [-1, -1, 2, 2, 2, 2]
+        pads = [-1, -1, 1, 1, 1, 1]
+        sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5], [1,2,.5]]
+        normalizations = -1
+        steps = []
+        return locals()
+    elif network == 'densenet-tiny':
+        network = 'densenet'
+        data_type = 'imagenet'
+        units = [6, 12, 18, 12]
+        num_stage = 4
+        growth_rate = 16
+        bottle_neck = True
+        from_layers = ['DBstage2_concat12', 'DBstage3_concat18', '', '', '', '']
+        num_filters = [-1, -1, 256, 256, 256, 128]
+        strides = [-1, -1, 2, 2, 2, 2]
+        pads = [-1, -1, 1, 1, 1, 1]
+        sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5], [1,2,.5]]
+        normalizations = -1
+        steps = []
+        return locals()
     else:
         msg = 'No configuration found for %s with data_shape %d' % (network,
                                                                     data_shape)
