@@ -6,7 +6,11 @@ import re
 import mxnet as mx
 from dataset.iterator import DetRecordIter
 from train.metric import MultiBoxMetric, RollingMultiBoxMetric
-from evaluate.eval_metric import MApMetric, VOC07MApMetric, RollingMApMetric, RollingVOC07MApMetric
+from evaluate.eval_metric import MApMetric, VOC07MApMetric, \
+    RollingMApMetric, RollingVOC07MApMetric
+from evaluate.custom_callbacks import LogDistributionsCallback, \
+    LogROCCallback, ParseLogCallback, LogDetectionsCallback
+from tools.visualize_net import net_visualization
 from config.config import cfg
 from networks.symbol_factory import get_symbol_train
 
@@ -28,6 +32,41 @@ def convert_pretrained(name, args):
     """
     return args
 
+def get_optimizer_params(optimizer=None, learning_rate=None, momentum=None,
+                         weight_decay=None, lr_scheduler=None, ctx=None, logger=None):
+
+    if optimizer.lower() == "rmsprop":
+        opt = "rmsprop"
+        logger.info("you chose RMSProp, decreasing lr by a factor of 10")
+        optimizer_params = {
+            "learning_rate": learning_rate / 10.0,
+            "wd": weight_decay,
+            "lr_scheduler": lr_scheduler,
+            "clip_gradient": None,
+            'rescale_grad': 1.0 / len(ctx) if len(ctx) > 0 else 1.0
+        }
+    elif optimizer.lower() == "sgd":
+        opt = "sgd"
+        optimizer_params = {
+            "learning_rate": learning_rate,
+            "momentum": momentum,
+            "wd": weight_decay,
+            "lr_scheduler": lr_scheduler,
+            "clip_gradient": None,
+            'rescale_grad': 1.0 / len(ctx) if len(ctx) > 0 else 1.0
+        }
+    elif optimizer.lower() == "adadelta":
+        opt = "adadelta"
+        optimizer_params = {}
+    elif optimizer.lower() == "adam":
+        opt = "adam"
+        optimizer_params = {
+            "learning_rate": learning_rate,
+            "lr_scheduler": lr_scheduler,
+            "clip_gradient": None,
+            'rescale_grad': 1.0 / len(ctx) if len(ctx) > 0 else 1.0
+        }
+    return opt, optimizer_params
 
 def get_lr_scheduler(learning_rate, lr_refactor_step, lr_refactor_ratio,
                      num_example, batch_size, begin_epoch):
@@ -78,7 +117,7 @@ def get_lr_scheduler(learning_rate, lr_refactor_step, lr_refactor_ratio,
         return (lr, lr_scheduler)
 
 
-def train_net(net,
+def train_net(network,
               train_path,
               num_classes,
               batch_size,
@@ -116,13 +155,17 @@ def train_net(net,
               monitor_pattern=".*",
               rolling=False,
               rolling_time=4,
-              log_file=None):
+              log_file=None,
+              optimizer="sgd",
+              tensorboard=False,
+              checkpoint_period=5,
+              min_neg_samples=0):
     """
     Wrapper for training phase.
 
     Parameters:
     ----------
-    net : str
+    network : str
         symbol name for the network structure
     train_path : str
         record file path for training
@@ -152,6 +195,8 @@ def train_net(net,
         end epoch of training
     frequent : int
         frequency to print out training status
+    optimizer: str
+        usage of defferent optimizers, other then default sgd
     learning_rate : float
         training learning rate
     momentum : float
@@ -188,20 +233,35 @@ def train_net(net,
         rolling time
     log_file : str
         log to file if enabled
+    tensorboard: bool
+        record logs into tensorboard
+    min_neg_samples : int
+        always have some negative examples, no matter how many positive there are.
+        this is useful when training on images with no ground-truth.
+    checkpoint_period : int
+        a checkpoint will be saved every "checkpoint_period" epochs
     """
+    # check actual number of train_images
+    if os.path.exists(train_path.replace("rec", "idx")):
+        with open(train_path.replace("rec", "idx"), 'r') as f:
+            txt = f.readlines()
+        num_example = len(txt)
     # set up logger
     logging.basicConfig()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     if log_file:
-        fh = logging.FileHandler(log_file)
+        log_file_path = os.path.join(os.path.dirname(prefix), log_file)
+        if not os.path.exists(os.path.dirname(log_file_path)):
+            os.makedirs(os.path.dirname(log_file_path))
+        fh = logging.FileHandler(log_file_path)
         logger.addHandler(fh)
 
     # check args
     if rolling:
-        prefix = prefix + "rolling_" + net + "_"
+        prefix = prefix + "rolling_" + network + "_"
     else:
-        prefix = prefix + net + "_"
+        prefix = prefix + network + "_"
 
     if isinstance(data_shape, int):
         data_shape = (3, data_shape, data_shape)
@@ -236,14 +296,15 @@ def train_net(net,
 
     # load symbol
     net = get_symbol_train(
-        net,
+        network,
         data_shape[1],
         rolling=rolling,           # MARK: whether rolling; added param
         rolling_time=4,
         num_classes=num_classes,
         nms_thresh=nms_thresh,
         force_suppress=force_suppress,
-        nms_topk=nms_topk)
+        nms_topk=nms_topk,
+        minimum_negative_samples=min_neg_samples)
 
     # define layers with fixed weight/bias
     if freeze_layer_pattern.strip():
@@ -296,6 +357,12 @@ def train_net(net,
         logger.info("Freezed parameters: [" + ','.join(fixed_param_names) +
                     ']')
 
+    # visualize net - both train and test
+    net_visualization(net=net, network=network,data_shape=data_shape[2],
+                      output_dir=os.path.dirname(prefix), train=True)
+    net_visualization(net=None, network=network, data_shape=data_shape[2],
+                      output_dir=os.path.dirname(prefix), train=False, num_classes=num_classes)
+
     # init training module
     mod = mx.mod.Module(
         net,
@@ -305,23 +372,53 @@ def train_net(net,
         fixed_param_names=fixed_param_names)
 
     # fit parameters
-    batch_end_callback = mx.callback.Speedometer(
-        train_iter.batch_size, frequent=frequent)
-    epoch_end_callback = mx.callback.do_checkpoint(prefix)
-    learning_rate, lr_scheduler = get_lr_scheduler(
-        learning_rate, lr_refactor_step, lr_refactor_ratio, num_example,
-        batch_size, begin_epoch)
-    # optimizer_params = {
-    #     'learning_rate': learning_rate,
-    #     'momentum': momentum,
-    #     'wd': weight_decay,
-    #     'lr_scheduler': lr_scheduler,
-    #     'clip_gradient': None,
-    #     'rescale_grad': 1.0 / len(ctx) if len(ctx) > 0 else 1.0
-    # }
-    optimizer_params = {
-        "learning_rate": learning_rate
-    }
+    batch_end_callback = []
+    eval_end_callback = []
+    epoch_end_callback = [mx.callback.do_checkpoint(prefix, period=checkpoint_period)]
+
+    # add logging to tensorboard
+    if tensorboard:
+        tensorboard_dir = os.path.join(os.path.dirname(prefix), "logs")
+        if not os.path.exists(tensorboard_dir):
+            os.makedirs(os.path.join(tensorboard_dir, "train", "scalar"))
+            os.makedirs(os.path.join(tensorboard_dir, "train", "dist"))
+            os.makedirs(os.path.join(tensorboard_dir, "val", "roc"))
+            os.makedirs(os.path.join(tensorboard_dir, "val", "scalar"))
+            os.makedirs(os.path.join(tensorboard_dir, "val", "images"))
+        batch_end_callback.append(
+            ParseLogCallback(dist_logging_dir=os.path.join(tensorboard_dir, 'train', 'dist'),
+                             scalar_logging_dir=os.path.join(tensorboard_dir, 'train', 'scalar'),
+                             logfile_path=log_file_path, batch_size=batch_size, iter_monitor=iter_monitor,
+                             frequent=frequent))
+        eval_end_callback.append(mx.contrib.tensorboard.LogMetricsCallback(
+            os.path.join(tensorboard_dir, 'val/scalar'), 'ssd'))
+        eval_end_callback.append(
+            LogROCCallback(
+                logging_dir=os.path.join(tensorboard_dir, 'val/roc'),
+                roc_path=os.path.join(os.path.dirname(prefix), 'roc'),
+                class_names=class_names))
+        eval_end_callback.append(
+            LogDetectionsCallback(
+                logging_dir=os.path.join(tensorboard_dir, 'val/images'),
+                images_path=os.path.join(os.path.dirname(prefix), 'images'),
+                class_names=class_names,
+                batch_size=batch_size,
+                mean_pixels=mean_pixels))
+
+    batch_end_callback.append(mx.callback.Speedometer(train_iter.batch_size, frequent=frequent))
+
+    learning_rate, lr_scheduler = get_lr_scheduler(learning_rate, lr_refactor_step,
+        lr_refactor_ratio, num_example, batch_size, begin_epoch)
+    opt, opt_params = get_optimizer_params(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        momentum=momentum,
+        weight_decay=weight_decay,
+        lr_scheduler=lr_scheduler,
+        ctx=ctx,
+        logger=logger
+    )
+    # TODO monitor the gradient flow as in 'https://github.com/dmlc/tensorboard/blob/master/docs/tutorial/understanding-vanish-gradient.ipynb'
     monitor = mx.mon.Monitor(
         iter_monitor, pattern=monitor_pattern) if iter_monitor > 0 else None
 
@@ -329,17 +426,21 @@ def train_net(net,
     if voc07_metric:
         if rolling:
             valid_metric = RollingVOC07MApMetric(rolling_time + 1, ovp_thresh,
-                use_difficult, class_names, pred_idx=3)
+                use_difficult, class_names, pred_idx=3,
+                roc_output_path=os.path.join(os.path.dirname(prefix), 'roc'))
         else:
             valid_metric = VOC07MApMetric(
-                ovp_thresh, use_difficult, class_names, pred_idx=3)
+                ovp_thresh, use_difficult, class_names, pred_idx=3,
+                roc_output_path=os.path.join(os.path.dirname(prefix), 'roc'))
     else:
         if rolling:
             valid_metric = RollingMApMetric(rolling_time + 1, ovp_thresh,
-                use_difficult, class_names, pred_idx=3)
+                use_difficult, class_names, pred_idx=3,
+                roc_output_path=os.path.join(os.path.dirname(prefix), 'roc'))
         else:
             valid_metric = MApMetric(
-                ovp_thresh, use_difficult, class_names, pred_idx=3)
+                ovp_thresh, use_difficult, class_names, pred_idx=3,
+                roc_output_path=os.path.join(os.path.dirname(prefix), 'roc'))
 
     mod.fit(
         train_iter,
@@ -348,8 +449,8 @@ def train_net(net,
         validation_metric=valid_metric,
         batch_end_callback=batch_end_callback,
         epoch_end_callback=epoch_end_callback,
-        optimizer='adam',
-        optimizer_params=optimizer_params,
+        optimizer=opt,
+        optimizer_params=opt_params,
         begin_epoch=begin_epoch,
         num_epoch=end_epoch,
         initializer=mx.init.Xavier(),
