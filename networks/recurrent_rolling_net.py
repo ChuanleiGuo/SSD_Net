@@ -3,7 +3,7 @@ import copy
 from math import ceil, floor
 import numpy as np
 import mxnet as mx
-from .common import multi_layer_feature, multibox_layer
+from networks.common import multi_layer_feature, multibox_layer
 
 
 def import_module(module_name):

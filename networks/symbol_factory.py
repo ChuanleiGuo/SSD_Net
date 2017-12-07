@@ -1,9 +1,9 @@
 """Presets for various network configurations"""
 from __future__ import absolute_import
 import logging
-from . import symbol_builder
 import numpy as np
-from .recurrent_rolling_net import get_symbol_rolling_train, get_symbol_rolling_test
+import networks.symbol_builder as symbol_builder
+from networks.recurrent_rolling_net import get_symbol_rolling_train, get_symbol_rolling_test
 
 def get_scales(min_scale=0.2, max_scale=0.9, num_layers=6):
     """
