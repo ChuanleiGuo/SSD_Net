@@ -399,7 +399,7 @@ class RollingVOC07MApMetric(RollingMApMetric):
     def __init__(self, num_rolling, ovp_thresh=0.5, use_difficult=False,
             class_names=None, pred_idx=0, roc_output_path=None):
         super(RollingVOC07MApMetric, self).__init__(num_rolling, ovp_thresh,
-            use_difficult, class_names, pred_idx)
+            use_difficult, class_names, pred_idx, roc_output_path=roc_output_path)
         self.eval_metrics = [VOC07MApMetric(ovp_thresh,
             use_difficult, class_names, pred_idx,
             roc_output_path=roc_output_path+str(i)) for i in range(self.num_rolling)]
