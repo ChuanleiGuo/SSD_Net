@@ -2,9 +2,8 @@ import os
 import mxnet as mx
 import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
-
 matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 class MApMetric(mx.metric.EvalMetric):
     """

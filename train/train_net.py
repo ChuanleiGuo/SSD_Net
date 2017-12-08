@@ -358,10 +358,10 @@ def train_net(network,
                     ']')
 
     # visualize net - both train and test
-    net_visualization(net=net, network=network,data_shape=data_shape[2],
-                      output_dir=os.path.dirname(prefix), train=True)
-    net_visualization(net=None, network=network, data_shape=data_shape[2],
-                      output_dir=os.path.dirname(prefix), train=False, num_classes=num_classes)
+    # net_visualization(net=net, network=network,data_shape=data_shape[2],
+    #                   output_dir=os.path.dirname(prefix), train=True)
+    # net_visualization(net=None, network=network, data_shape=data_shape[2],
+    #                   output_dir=os.path.dirname(prefix), train=False, num_classes=num_classes)
 
     # init training module
     mod = mx.mod.Module(
