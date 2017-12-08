@@ -2,13 +2,13 @@
 
 # this is a training script
 # defining global parameters
-GPUS='0,1,2,3'
+GPUS='0,1,3'
 TRAIN_REC_PATH=./data/train.rec
 VAL_REC_PATH=./data/val.rec
-NETWORK=vgg16_reduced
-BATCH_SIZE=128
-DATA_SHAPE=300
-PRETRAINED=./model/vgg16_reduced/vgg16_reduced
+NETWORK=resnet50
+BATCH_SIZE=64
+DATA_SHAPE=512
+PRETRAINED=./model/resnet50
 OPTIMIZER=adam
 TENSORBOARD=True
 LR_STEPS=20,40,60
@@ -24,4 +24,8 @@ python ./train.py \
     --optimizer ${OPTIMIZER} \
     --tensorboard ${TENSORBOARD} \
     --lr-steps ${LR_STEPS} \
-    --freeze ''
+    --freeze '' \
+    --rolling True \
+    --rolling_time 4 \
+    --resume 222 \
+    --end-epoch 1200
