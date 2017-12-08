@@ -8,7 +8,7 @@ VAL_REC_PATH=./data/val.rec
 NETWORK=resnet50
 BATCH_SIZE=64
 DATA_SHAPE=512
-PRETRAINED=./model/resnet50
+PRETRAINED=./model/ssd_resnet50_512
 OPTIMIZER=adam
 TENSORBOARD=True
 LR_STEPS=20,40,60
@@ -21,11 +21,11 @@ python ./train.py \
     --data-shape ${DATA_SHAPE} \
     --gpus ${GPUS} \
     --pretrained ${PRETRAINED} \
+    --epoch 222 \
     --optimizer ${OPTIMIZER} \
     --tensorboard ${TENSORBOARD} \
     --lr-steps ${LR_STEPS} \
     --freeze '' \
     --rolling True \
     --rolling_time 4 \
-    --resume 222 \
     --end-epoch 1200
