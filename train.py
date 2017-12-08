@@ -72,7 +72,7 @@ def parse_args():
         '--prefix',
         dest='prefix',
         help='new model prefix',
-        default=os.path.join(os.getcwd(), 'model', 'ssd_'),
+        default=os.path.join(os.getcwd(), 'output', 'exp1', 'ssd_'),
         type=str)
     parser.add_argument(
         '--gpus',
@@ -110,6 +110,12 @@ def parse_args():
         type=int,
         default=350,
         help='force padding label width to sync across train and validation')
+    parser.add_argument(
+        "--optimizer",
+        dest="optimizer",
+        type=str,
+        default="sgd",
+        help="Whether to use a different optimizer or follow the original code with sgd")
     parser.add_argument(
         '--lr',
         dest='learning_rate',
@@ -209,6 +215,12 @@ def parse_args():
         default=0.45,
         help='non-maximum suppression threshold')
     parser.add_argument(
+        '-nms_topk',
+        dest="nms_topk",
+        type=int,
+        default=400,
+        help="final number of detections")
+    parser.add_argument(
         '--overlap',
         dest='overlap_thresh',
         type=float,
@@ -244,6 +256,18 @@ def parse_args():
         type=int,
         default=4,
         help='rolling time of the rolling structure')
+    parser.add_argument(
+        '--tensorboard',
+        dest="tensorboard",
+        type=bool,
+        default=False,
+        help="save metrics into tensorboard readable files")
+    parser.add_argument(
+        '--min_neg_samples',
+        dest='min_neg_samples',
+        type=int,
+        default=0,
+        help='min number of negative samples taken in hard mining.')
     args = parser.parse_args()
     return args
 
@@ -295,6 +319,7 @@ if __name__ == '__main__':
         args.lr_refactor_step,
         args.lr_refactor_ratio,
         val_path=args.val_path,
+        min_neg_samples=args.min_neg_samples,
         num_example=args.num_example,
         class_names=class_names,
         label_pad_width=args.label_width,
@@ -308,4 +333,6 @@ if __name__ == '__main__':
         force_nms=args.force_nms,
         ovp_thresh=args.overlap_thresh,
         use_difficult=args.use_difficult,
-        voc07_metric=args.use_voc07_metric)
+        voc07_metric=args.use_voc07_metric,
+        optimizer=args.optimizer,
+        tensorboard=args.tensorboard)
