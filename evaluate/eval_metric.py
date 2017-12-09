@@ -5,7 +5,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-
 class MApMetric(mx.metric.EvalMetric):
     """
     Calculate mean AP for object detection task
