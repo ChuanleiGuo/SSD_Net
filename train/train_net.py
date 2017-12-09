@@ -299,7 +299,7 @@ def train_net(network,
         network,
         data_shape[1],
         rolling=rolling,           # MARK: whether rolling; added param
-        rolling_time=4,
+        rolling_time=rolling_time,
         num_classes=num_classes,
         nms_thresh=nms_thresh,
         force_suppress=force_suppress,
@@ -370,6 +370,12 @@ def train_net(network,
         logger=logger,
         context=ctx,
         fixed_param_names=fixed_param_names)
+
+    mod.bind(data_shapes=val_iter.provide_data, label_shapes=val_iter.provide_label)
+    mod.init_params(mx.init.Xavier(), args, auxs, True)
+    y = mod.predict(val_iter)
+    metric = RollingVOC07MApMetric(rolling_time + 1)
+    print(mod.score(val_iter, metric, 8))
 
     # fit parameters
     batch_end_callback = []
