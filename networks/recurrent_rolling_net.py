@@ -28,8 +28,89 @@ def _get_sym_output_shape(sym, input_shape):
     _, out_shapes, _ = sym.infer_shape(data=input_shape)
     return out_shapes[0][2: ]
 
+def _get_shared_weights(num_layers, strides):
+    forward_weights = []
+    for i in range(num_layers - 1):
+        if strides[i] == -1:
+            weight = mx.sym.Variable(
+                name="forward_%d_weight" % i,
+                lr_mult=1,
+                wd_mult=1,
+                init=mx.init.Xavier())
+            bias = mx.sym.Variable(
+                name="forward_%d_bias" % i,
+                lr_mult=2,
+                wd_mult=0,
+                init=mx.init.Constant(0))
+            forward_weights.append((weight, bias))
+        else:
+            weight1x1 = mx.sym.Variable(
+                name="forward_1x1_%d_weight" % i,
+                lr_mult=1,
+                wd_mult=1,
+                init=mx.init.Xavier())
+            bias1x1 = mx.sym.Variable(
+                name="forward_1x1_%d_bias" % i,
+                lr_mult=2,
+                wd_mult=0,
+                init=mx.init.Constant(0))
+            weight3x3 = mx.sym.Variable(
+                name="forward_3x3_%d_weight" % i,
+                lr_mult=1,
+                wd_mult=1,
+                init=mx.init.Xavier())
+            bias3x3 = mx.sym.Variable(
+                name="forward_3x3_%d_bias" % i,
+                lr_mult=2,
+                wd_mult=0,
+                init=mx.init.Constant(0))
+            forward_weights.append((weight1x1, bias1x1, weight3x3, bias3x3))
+
+    backward_weights = []
+    deconv_weights = []
+    for i in range(num_layers - 1, 0, -1):
+        weight = mx.sym.Variable(
+            name="backward_%d_weight" % i,
+            lr_mult=1,
+            wd_mult=1,
+            init=mx.init.Xavier())
+        bias = mx.sym.Variable(
+            name="backward_%d_bias" % i,
+            lr_mult=2,
+            wd_mult=0,
+            init=mx.init.Constant(0))
+        backward_weights.append((weight, bias))
+
+        bweight = mx.sym.Variable(
+            name="deconv_%d_weight" % i,
+            lr_mult=1,
+            wd_mult=1,
+            init=mx.init.Xavier())
+        bbias = mx.sym.Variable(
+            name="deconv_%d_bias" % i,
+            lr_mult=2,
+            wd_mult=0,
+            init=mx.init.Constant(0))
+        deconv_weights.append((bweight, bbias))
+
+    concat_weights = []
+    for i in range(num_layers):
+        weight = mx.sym.Variable(
+            name="concat_%d_weight" % i,
+            lr_mult=1,
+            wd_mult=1,
+            init=mx.init.Xavier())
+        bias = mx.sym.Variable(
+            name="concat_%d_bias" % i,
+            lr_mult=2,
+            wd_mult=0,
+            init=mx.init.Constant(0))
+        concat_weights.append((weight, bias))
+
+    return (forward_weights, backward_weights, deconv_weights, concat_weights)
+
 def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
-        rolling_rate, roll_idx, conv2=False, normalize=True):
+        rolling_rate, roll_idx, conv2=False, normalize=True, shared_weights=None):
     # strides 为 -1 时，实现方法，根据两层之间的尺寸比值
     rolling_layers = []
     from_layer_names = [l.name for l in from_layers]
@@ -41,6 +122,9 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
     else:
         for i in range(len(from_layer_names)):
             from_layer_names[i] = "%s_%d" % (from_layer_names[i], roll_idx)
+
+    forward_weights, backward_weights, deconv_weights, concat_weights = shared_weights
+
     for i in range(len(from_layers)):
         f_layers = []
         num_filter = int(num_filters[i] * rolling_rate)
@@ -48,18 +132,28 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
         if i > 0:
             f_layer = from_layers[i - 1]
             o_layer_name = "%s_r%d" % (from_layer_names[i - 1], roll_idx)
+
             if strides[i] == -1:
-                o_layer = mx.sym.Convolution(data=f_layer, num_filter=num_filter, \
-                    stride=(1, 1), pad=(0, 0), kernel=(1, 1), name=o_layer_name)
+
+                f_weight, f_bias = forward_weights[i - 1]
+
+                o_layer = mx.sym.Convolution(data=f_layer, weight=f_weight, bias=f_bias, \
+                    num_filter=num_filter, stride=(1, 1), pad=(0, 0), kernel=(1, 1), \
+                    name=o_layer_name)
                 o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
                 o_layer = mx.sym.Pooling(data=o_layer, pool_type="max",
                     kernel=(2, 2), stride=(2, 2), name="pool_"+o_layer_name)
             else:
-                o_layer = mx.sym.Convolution(data=f_layer, num_filter=num_filter, \
-                    stride=(1, 1), pad=(0, 0), kernel=(1, 1), name=o_layer_name)
+
+                f_weight1x1, f_bias1x1, f_weight3x3, f_bias3x3 = forward_weights[i - 1]
+
+                o_layer = mx.sym.Convolution(data=f_layer, weight=f_weight1x1, bias=f_bias1x1, \
+                    num_filter=num_filter, stride=(1, 1), pad=(0, 0), kernel=(1, 1), \
+                    name=o_layer_name)
                 s, p = strides[i], pads[i]
-                o_layer = mx.sym.Convolution(data=o_layer, num_filter=num_filter,
-                    stride=(s, s), pad=(p, p), kernel=(3, 3), name="conv3x3"+o_layer_name)
+                o_layer = mx.sym.Convolution(data=o_layer, weight=f_weight3x3, bias=f_bias3x3, \
+                    num_filter=num_filter, stride=(s, s), pad=(p, p), kernel=(3, 3), \
+                    name="conv3x3"+o_layer_name)
             f_layers.append(o_layer)
 
         f_layers.append(from_layers[i])
@@ -67,8 +161,12 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
         if i < len(from_layers) - 1:
             f_layer = from_layers[i + 1]
             o_layer_name = "%s_l%d" % (from_layer_names[i + 1], roll_idx)
-            o_layer = mx.sym.Convolution(data=f_layer, num_filter=num_filter, \
-                kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=o_layer_name)
+
+            b_weight, b_bias = backward_weights[i + 1]
+
+            o_layer = mx.sym.Convolution(data=f_layer, weight=b_weight, bias=b_bias, \
+                num_filter=num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), \
+                name=o_layer_name)
             o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
 
             next_layer_output_size = _get_sym_output_shape(
@@ -84,16 +182,24 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
             else:
                 s, p = strides[i + 1], pads[i + 1]
                 k = 3
-            o_layer = mx.sym.Deconvolution(data=o_layer, num_filter=num_filter, kernel=(k, k), \
-                stride=(s, s), pad=(p, p), name="deconv_"+o_layer_name)
+
+            d_weight, d_bias = deconv_weights[i + 1]
+
+            o_layer = mx.sym.Deconvolution(data=o_layer, weight=d_weight, bias=d_bias, \
+                num_filter=num_filter, kernel=(k, k), stride=(s, s), pad=(p, p), \
+                name="deconv_"+o_layer_name)
 
             f_layers.append(o_layer)
 
         o_layer_name = "%s_concat_%s" % (from_layer_names[i], roll_idx)
         o_layer = mx.sym.concat(*f_layers, dim=1)
         o_layer_name = "%s_%d" % (from_layer_names[i], roll_idx + 1)
-        o_layer = mx.sym.Convolution(data=o_layer, num_filter=num_filters[i], \
-            kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=o_layer_name)
+
+        c_weight, c_bias = concat_weights[i]
+
+        o_layer = mx.sym.Convolution(data=o_layer, weight=c_weight, bias=c_bias, \
+            num_filter=num_filters[i], kernel=(1, 1), stride=(1, 1), pad=(0, 0), \
+            name=o_layer_name)
         o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
 
         rolling_layers.append(o_layer)
