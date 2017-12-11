@@ -371,12 +371,6 @@ def train_net(network,
         context=ctx,
         fixed_param_names=fixed_param_names)
 
-    mod.bind(data_shapes=val_iter.provide_data, label_shapes=val_iter.provide_label)
-    mod.init_params(mx.init.Xavier(), args, auxs, True)
-    y = mod.predict(val_iter)
-    metric = RollingMultiBoxMetric(rolling_time + 1)
-    print(mod.score(val_iter, metric, 8))
-
     # fit parameters
     batch_end_callback = []
     eval_end_callback = []
