@@ -87,7 +87,7 @@ def get_config(network, data_shape, **kwargs):
     elif network == 'inceptionv3':
         if data_shape >= 448:
             from_layers = ['ch_concat_mixed_7_chconcat', 'ch_concat_mixed_10_chconcat', '', '', '', '']
-            num_filters = [512, 512, 512, 256, 256, 128]
+            num_filters = [768, 2048, 512, 256, 256, 128]
             strides = [-1, -1, 2, 2, 2, 2]
             pads = [-1, -1, 1, 1, 1, 1]
             sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
@@ -97,7 +97,7 @@ def get_config(network, data_shape, **kwargs):
             steps = []
         else:
             from_layers = ['ch_concat_mixed_2_chconcat', 'ch_concat_mixed_7_chconcat', 'ch_concat_mixed_10_chconcat', '', '', '']
-            num_filters = [256, 256, 256, 256, 256, 128]
+            num_filters = [288, 768, 2048, 256, 256, 128]
             strides = [-1, -1, -1, 2, 2, 2]
             pads = [-1, -1, -1, 1, 1, 1]
             sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
@@ -111,7 +111,7 @@ def get_config(network, data_shape, **kwargs):
         image_shape = '3,224,224'  # resnet require it as shape check
         network = 'resnet'
         from_layers = ['_plus12', '_plus15', '', '', '', '']
-        num_filters = [512, 512, 512, 256, 256, 128]
+        num_filters = [1024, 2048, 512, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
         sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
@@ -125,7 +125,7 @@ def get_config(network, data_shape, **kwargs):
         image_shape = '3,224,224'
         network = 'resnet'
         from_layers = ['_plus12', '_plus15', '', '', '', '']
-        num_filters = [512, 512, 512, 256, 256, 128]
+        num_filters = [1024, 2048, 512, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
         sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
@@ -153,7 +153,7 @@ def get_config(network, data_shape, **kwargs):
         growth_rate = 32
         bottle_neck = True
         from_layers = ['DBstage3_concat24', 'DBstage4_concat16', '', '', '', '']
-        num_filters = [-1, -1, 256, 256, 256, 128]
+        num_filters = [1024, 1024, 256, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
         sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
@@ -170,7 +170,7 @@ def get_config(network, data_shape, **kwargs):
         growth_rate = 16
         bottle_neck = True
         from_layers = ['DBstage2_concat12', 'DBstage3_concat18', '', '', '', '']
-        num_filters = [-1, -1, 256, 256, 256, 128]
+        num_filters = [256, 416, 256, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
         sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
