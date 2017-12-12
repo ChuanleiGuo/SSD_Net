@@ -14,8 +14,6 @@ def import_module(module_name):
     return importlib.import_module(module_name)
 
 
-rolling_rate = 0.075
-
 resize_height, resize_width = 2560, 768
 min_dim = min(resize_width, resize_height)
 
@@ -31,7 +29,7 @@ def _get_sym_output_shape(sym, input_shape):
 def _get_shared_weights(num_layers, strides):
     forward_weights = []
     for i in range(num_layers - 1):
-        if strides[i] == -1:
+        if strides[i + 1] == -1:
             weight = mx.sym.Variable(
                 name="forward_%d_weight" % i,
                 lr_mult=1,
@@ -68,7 +66,7 @@ def _get_shared_weights(num_layers, strides):
 
     backward_weights = []
     deconv_weights = []
-    for i in range(num_layers - 1, 0, -1):
+    for i in range(num_layers - 1):
         weight = mx.sym.Variable(
             name="backward_%d_weight" % i,
             lr_mult=1,
@@ -81,17 +79,17 @@ def _get_shared_weights(num_layers, strides):
             init=mx.init.Constant(0))
         backward_weights.append((weight, bias))
 
-        bweight = mx.sym.Variable(
+        dweight = mx.sym.Variable(
             name="deconv_%d_weight" % i,
             lr_mult=1,
             wd_mult=1,
             init=mx.init.Xavier())
-        bbias = mx.sym.Variable(
+        dbias = mx.sym.Variable(
             name="deconv_%d_bias" % i,
             lr_mult=2,
             wd_mult=0,
             init=mx.init.Constant(0))
-        deconv_weights.append((bweight, bbias))
+        deconv_weights.append((dweight, dbias))
 
     concat_weights = []
     for i in range(num_layers):
@@ -162,7 +160,7 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
             f_layer = from_layers[i + 1]
             o_layer_name = "%s_l%d" % (from_layer_names[i + 1], roll_idx)
 
-            b_weight, b_bias = backward_weights[i + 1]
+            b_weight, b_bias = backward_weights[i]
 
             o_layer = mx.sym.Convolution(data=f_layer, weight=b_weight, bias=b_bias, \
                 num_filter=num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), \
@@ -183,9 +181,9 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
                 s, p = strides[i + 1], pads[i + 1]
                 k = 3
 
-            d_weight, d_bias = deconv_weights[i + 1]
+            d_weight, _ = deconv_weights[i]
 
-            o_layer = mx.sym.Deconvolution(data=o_layer, weight=d_weight, bias=d_bias, \
+            o_layer = mx.sym.Deconvolution(data=o_layer, weight=d_weight, no_bias=True, \
                 num_filter=num_filter, kernel=(k, k), stride=(s, s), pad=(p, p), \
                 name="deconv_"+o_layer_name)
 
@@ -342,10 +340,13 @@ def get_symbol_rolling_train(
 
     # Rolling Layers
     last_rolling_layers = layers
+
+    shared_weights = _get_shared_weights(len(last_rolling_layers), strides)
+
     for roll_idx in range(1, rolling_time + 1):
         roll_layers = create_rolling_struct(last_rolling_layers, kwargs["data_shape"], \
             num_filters=num_filters, strides=strides, pads=pads, rolling_rate=rolling_rate, \
-            roll_idx=roll_idx, conv2=False, normalize=True)
+            roll_idx=roll_idx, conv2=False, normalize=True, shared_weights=shared_weights)
 
         out = add_multibox_and_loss_for_extra(roll_layers, label=label, num_classes=num_classes,
             num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
@@ -440,10 +441,12 @@ def get_symbol_rolling_test(
 
     outputs = [out]
 
+    shared_weights = _get_shared_weights(len(layers), strides)
+
     for roll_idx in range(1, rolling_time + 1):
         roll_layers = create_rolling_struct(layers, kwargs["data_shape"], num_filters=num_filters,
             strides=strides, pads=pads, rolling_rate=rolling_rate, roll_idx=roll_idx,
-            conv2=False, normalize=True)
+            conv2=False, normalize=True, shared_weights=shared_weights)
         out = add_multibox_for_extra(roll_layers, num_classes=num_classes,
             num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
             steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
