@@ -331,3 +331,52 @@ def multibox_layer(from_layers,
     anchor_boxes = mx.symbol.Reshape(
         data=anchor_boxes, shape=(0, -1, 4), name="multibox_anchors")
     return [loc_preds, cls_preds, anchor_boxes]
+
+
+def multibox_layer_brached(from_layers,
+                   num_classes,
+                   sizes=[.2, .95],
+                   ratios=[1],
+                   normalization=-1,
+                   num_channels=[],
+                   clip=False,
+                   interm_layer=0,
+                   steps=[],
+                   branch_num=2):
+    """
+    the basic aggregation module for SSD detection. Takes in multiple layers,
+    generate multiple object detection targets by customized layers
+
+    Parameters:
+    ----------
+    from_layers : list of mx.symbol
+        generate multibox detection from layers
+    num_classes : int
+        number of classes excluding background, will automatically handle
+        background in this function
+    sizes : list or list of list
+        [min_size, max_size] for all layers or [[], [], []...] for specific layers
+    ratios : list or list of list
+        [ratio1, ratio2...] for all layers or [[], [], ...] for specific layers
+    normalizations : int or list of int
+        use normalizations value for all layers or [...] for specific layers,
+        -1 indicate no normalizations and scales
+    num_channels : list of int
+        number of input layer channels, used when normalization is enabled, the
+        length of list should equals to number of normalization layers
+    clip : bool
+        whether to clip out-of-image boxes
+    interm_layer : int
+        if > 0, will add a intermediate Convolution layer
+    steps : list
+        specify steps for each MultiBoxPrior layer, leave empty, it will calculate
+        according to layer dimensions
+
+    Returns:
+    ----------
+    list of outputs, as [loc_preds, cls_preds, anchor_boxes]
+    loc_preds : localization regression prediction
+    cls_preds : classification prediction
+    anchor_boxes : generated anchor boxes
+    """
+    pass
