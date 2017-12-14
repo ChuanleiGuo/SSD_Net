@@ -16,6 +16,7 @@ FREEZE=""
 ROLLING=True
 ROLLING_TIME=4
 END_EPOCH=1200
+PREFIX="./output/exp2/ssd_"
 
 python ./train.py \
     --train-path ${TRAIN_REC_PATH} \
@@ -25,6 +26,7 @@ python ./train.py \
     --data-shape ${DATA_SHAPE} \
     --gpus ${GPUS} \
     --pretrained ${PRETRAINED} \
+    --prefix ${PREFIX} \
     --epoch 222 \
     --optimizer ${OPTIMIZER} \
     --tensorboard ${TENSORBOARD} \
