@@ -3,7 +3,7 @@ import copy
 from math import ceil, floor
 import numpy as np
 import mxnet as mx
-from networks.common import multi_layer_feature, multibox_layer
+from networks.common import multi_layer_feature, multibox_layer, branched_multibox_layer
 
 
 def import_module(module_name):
@@ -208,9 +208,9 @@ def add_multibox_and_loss_for_extra(extra_layers, label, num_classes, num_filter
         sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
         force_suppress=False, nms_topk=400, rolling_idx=0):
 
-    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
+    loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+        num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=5)
 
     tmp = mx.contrib.symbol.MultiBoxTarget(
         *[anchor_boxes, label, cls_preds], overlap_threshold=.5, \
@@ -246,9 +246,9 @@ def add_multibox_for_extra(extra_layers, num_classes, num_filters,
         sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
         force_suppress=False, nms_topk=400, rolling_idx=0):
 
-    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
+    loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+        num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=5)
 
     cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode='channel', \
         name='cls_prob_%d' % rolling_idx)
