@@ -2,7 +2,7 @@
 
 # this is a training script
 # defining global parameters
-GPUS='0,1,3'
+GPUS='0,3,6'
 TRAIN_REC_PATH=./data/train.rec
 VAL_REC_PATH=./data/val.rec
 NETWORK=resnet50
@@ -10,6 +10,7 @@ BATCH_SIZE=32
 DATA_SHAPE=512
 PRETRAINED=./model/ssd_resnet50_512
 OPTIMIZER=adam
+LR=0.001
 TENSORBOARD=True
 LR_STEPS=20,40,60
 FREEZE=""
@@ -30,8 +31,9 @@ python ./train.py \
     --epoch 222 \
     --optimizer ${OPTIMIZER} \
     --tensorboard ${TENSORBOARD} \
+    --lr ${LR} \
     --lr-steps ${LR_STEPS} \
-    --freeze ${FREEZE} \
+    --freeze '' \
     --rolling ${ROLLING} \
     --rolling_time ${ROLLING_TIME} \
     --end-epoch ${END_EPOCH}
