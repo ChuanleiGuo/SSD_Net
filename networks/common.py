@@ -255,7 +255,7 @@ def multibox_layer(from_layers,
                 mode="channel", name="{}_norm".format(from_name))
             scale = mx.symbol.Variable(
                 name="{}_scale".format(from_name),
-                shape=(1, num_channels[0], 1, 1),
+                shape=(1, num_channels[k], 1, 1),       # TODO: determine whether it should be num_channels[k]
                 init=mx.init.Constant(normalization[k]),
                 attr={
                     '__wd_mult__': '0.1'
@@ -333,7 +333,7 @@ def multibox_layer(from_layers,
     return [loc_preds, cls_preds, anchor_boxes]
 
 
-def multibox_layer_brached(from_layers,
+def branched_multibox_layer(from_layers,
                    num_classes,
                    sizes=[.2, .95],
                    ratios=[1],
@@ -371,7 +371,8 @@ def multibox_layer_brached(from_layers,
     steps : list
         specify steps for each MultiBoxPrior layer, leave empty, it will calculate
         according to layer dimensions
-
+    branch_num : int
+        number of additional regressor to be added
     Returns:
     ----------
     list of outputs, as [loc_preds, cls_preds, anchor_boxes]
@@ -379,4 +380,112 @@ def multibox_layer_brached(from_layers,
     cls_preds : classification prediction
     anchor_boxes : generated anchor boxes
     """
-    pass
+    assert len(from_layers) > 0, "from_layers must not be empty list"
+    assert num_classes > 0, \
+        "num_classes {} must be larger than 0".format(num_classes)
+
+    assert len(ratios) > 0, "aspect ratios must not be empty list"
+    if not isinstance(ratios[0], list):
+        ratios = [ratios] * len(from_layers)
+    assert len(ratios) == len(from_layers), \
+        "ratios and from_layers must have same length"
+
+    assert len(sizes) > 0, "sizes must not be empty list"
+    assert len(sizes) == len(from_layers), \
+        "sizes and from layers must have same length"
+
+    if not isinstance(normalization, list):
+        normalization = [normalization] * len(from_layers)
+    assert len(normalization) == len(from_layers)
+
+    assert sum(x > 0 for x in normalization) <= len(num_channels), \
+        "must provide number of channels for each normalized layer"
+
+    loc_pred_layers = []
+    cls_pred_layers = []
+    anchor_layers = []
+    num_classes += 1 # use background as label 0
+
+    for k, from_layer in enumerate(from_layers):
+        from_name = from_layer.name
+        # normalize
+        if normalization[k] > 0:
+            from_layer = mx.sym.L2Normalization(
+                data=from_layer,
+                mode="channel",
+                name="{}_norm".format(from_name))
+            scale = mx.sym.Variable(
+                name="{}_scale".format(from_name),
+                shape=(1, -1, 1, 1),
+                init=mx.init.Constant(normalization[k]),
+                wd_mult=0.1
+            )
+            from_layer = mx.symbol.broadcast_mul(lhs=scale, rhs=from_layer)
+        if interm_layer > 0:
+            from_layer = mx.sym.Convolution(data=from_layer, kernel=(3, 3), \
+                stride=(1, 1), pad=(1, 1), num_filter=interm_layer, \
+                name="{}_inter_conv".format(from_name))
+            from_layer = mx.sym.Activation(data=from_layer, act_type="relu", \
+                name="{}_inter_relu".format(from_name))
+
+        repeat_time = branch_num if k != len(from_layers) - 1 else 1
+        for mbox_idx in range(repeat_time):
+            if k < len(from_layers) - 1:
+                min_size = sizes[k][0] + mbox_idx * (sizes[k + 1][0] - sizes[k][0]) / branch_num
+                max_size = sizes[k][1] + mbox_idx * (sizes[k + 1][1] - sizes[k][1]) / branch_num
+                size = [min_size, max_size]
+            else:
+                size = sizes[k]
+
+            #size = sizes[k]
+            assert len(size) > 0, "must provide at least one size"
+            size_str = "(" + ",".join([str(x) for x in size]) + ")"
+            ratio = ratios[k]
+            assert len(ratio) > 0, "must provide at least one ratio"
+            ratio_str = "(" + ",".join([str(x) for x in ratio]) + ")"
+            num_anchors = len(size) - 1 + len(ratio)
+
+            num_loc_pred = num_anchors * 4
+            bias = mx.sym.Variable(
+                name="{}_loc_pred_conv_bias_{}".format(from_name, mbox_idx),
+                init=mx.init.Constant(0.0),
+                lr_mult=2.0
+            )
+            loc_pred = mx.sym.Convolution(data=from_layer, bias=bias, kernel=(3, 3), \
+                stride=(1, 1), pad=(1, 1), num_filter=num_loc_pred, \
+                name="{}_loc_pred_conv_{}".format(from_name, mbox_idx))
+            loc_pred = mx.sym.transpose(loc_pred, axes=(0, 2, 3, 1))
+            loc_pred = mx.sym.Flatten(data=loc_pred)
+            loc_pred_layers.append(loc_pred)
+
+            num_cls_pred = num_anchors * num_classes
+            bias = mx.sym.Variable(
+                name="{}_cls_pred_conv_bias_{}".format(from_name, mbox_idx),
+                init=mx.init.Constant(0.0),
+                lr_mult=2.0
+            )
+            cls_pred = mx.sym.Convolution(data=from_layer, bias=bias, kernel=(3, 3), \
+                stride=(1, 1), pad=(1, 1), num_filter=num_cls_pred, \
+                name="{}_cls_pred_conv_{}".format(from_name, mbox_idx))
+            cls_pred = mx.sym.transpose(cls_pred, axes=(0, 2, 3, 1))
+            cls_pred = mx.sym.Flatten(data=cls_pred)
+            cls_pred_layers.append(cls_pred)
+
+            if steps:
+                step = (steps[k], steps[k])
+            else:
+                step = '(-1.0, -1.0)'
+            anchors = mx.contrib.sym.MultiBoxPrior(from_layer, sizes=size_str, ratios=ratio_str, \
+                clip=clip, name="{}_anchors_{}".format(from_name, mbox_idx), steps=step)
+            anchors = mx.sym.Flatten(data=anchors)
+            anchor_layers.append(anchors)
+
+    loc_preds = mx.sym.Concat(*loc_pred_layers, num_args=len(loc_pred_layers), \
+        dim=1, name="multibox_loc_pred")
+    cls_preds = mx.sym.Concat(*cls_pred_layers, num_args=len(cls_pred_layers), \
+        dim=1)
+    cls_preds = mx.sym.Reshape(data=cls_preds, shape=(0, -1, num_classes))
+    cls_preds = mx.sym.transpose(cls_preds, axes=(0, 2, 1), name="multibox_cls_pred")
+    anchor_boxes = mx.sym.Concat(*anchor_layers, num_args=len(anchor_layers), dim=1)
+    anchor_boxes = mx.sym.Reshape(data=anchor_boxes, shape=(0, -1, 4), name="multibox_anchors")
+    return [loc_preds, cls_preds, anchor_boxes]
