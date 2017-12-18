@@ -429,7 +429,7 @@ def get_symbol_rolling_test(
     layers = multi_layer_feature(
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
-    loc_preds, cls_preds, anchor_boxes = multibox_layer(layers, \
+    loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
         num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
 
