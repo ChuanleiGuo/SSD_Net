@@ -6,6 +6,7 @@ import mxnet
 curr_path = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(curr_path, '..'))
 from dataset.pascal_voc import PascalVoc
+from dataset.kitti_voc import KITTIVoc
 from dataset.concat_db import ConcatDB
 
 def load_pascal(image_set, year, devkit_path, shuffle=False,
@@ -46,6 +47,19 @@ def load_pascal(image_set, year, devkit_path, shuffle=False,
     else:
         return imdbs[0]
 
+def load_kitti(image_set, root_path, shuffle=True, class_names=None, true_negative=None):
+    image_set = [y.strip() for y in image_set.split(',')]
+    assert image_set, "No image_set specified"
+
+    imdbs = []
+    for s in image_set:
+        imdbs.append(KITTIVoc(s, root_path, shuffle, is_train=True,
+            class_names=class_names, true_negative_images=true_negative))
+    if len(imdbs) > 1:
+        return ConcatDB(imdbs, shuffle)
+    else:
+        return imdbs[0]
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Prepare lists for dataset')
     parser.add_argument('--dataset', dest='dataset', help='dataset to use',
@@ -74,8 +88,13 @@ if __name__ == "__main__":
     if args.class_names is not None:
         assert args.target is not None, 'for a subset of classes, specify a target path. Its for your own safety'
     if args.dataset == "pascal":
-        db = load_pascal(args.set, args.year, args.root_path, args.shuffle,
+        db = load_pascal(args.dataset, args.year, args.root_path, args.shuffle,
                          args.class_names, args.true_negative)
+        print("saving list to disk...")
+        db.save_imglist(args.target, root=args.root_path)
+    elif args.dataset == "kitti":
+        db = load_kitti(args.dataset, args.root_path, shuffle=args.shuffle,
+                        class_names=args.class_names, true_negative=args.true_negative)
         print("saving list to disk...")
         db.save_imglist(args.target, root=args.root_path)
     else:
