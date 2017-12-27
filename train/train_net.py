@@ -345,6 +345,9 @@ def train_net(network,
             ctx_str, pretrained))
         _, args, auxs = mx.model.load_checkpoint(pretrained, epoch)
         args = convert_pretrained(pretrained, args)
+
+        # WARNING: set freezed params
+        fixed_param_names = list(args.keys())
     else:
         logger.info("Experimental: start training from scratch with {}"
                     .format(ctx_str))
