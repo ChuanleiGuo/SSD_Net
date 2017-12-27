@@ -2,7 +2,7 @@
 
 # this is a training script
 # defining global parameters
-GPUS='0,3,6'
+GPUS='1,2,4'
 TRAIN_REC_PATH=./data/train.rec
 VAL_REC_PATH=./data/val.rec
 NETWORK=resnet50
@@ -10,7 +10,7 @@ BATCH_SIZE=32
 DATA_SHAPE=512
 PRETRAINED=./model/ssd_resnet50_512
 OPTIMIZER=adam
-LR=0.001
+LR=0.0004
 TENSORBOARD=True
 LR_STEPS=20,40,60
 FREEZE=""
@@ -26,9 +26,8 @@ python ./train.py \
     --batch-size ${BATCH_SIZE} \
     --data-shape ${DATA_SHAPE} \
     --gpus ${GPUS} \
-    --pretrained ${PRETRAINED} \
     --prefix ${PREFIX} \
-    --epoch 222 \
+    --resume 100 \
     --optimizer ${OPTIMIZER} \
     --tensorboard ${TENSORBOARD} \
     --lr ${LR} \
