@@ -22,9 +22,11 @@ min_ratio = 15
 max_ratio = 85
 rolling_rate = 0.075
 
+
 def _get_sym_output_shape(sym, input_shape):
     _, out_shapes, _ = sym.infer_shape(data=input_shape)
-    return out_shapes[0][2: ]
+    return out_shapes[0][2:]
+
 
 def _get_shared_weights(num_layers, strides):
     forward_weights = []
@@ -107,8 +109,17 @@ def _get_shared_weights(num_layers, strides):
 
     return (forward_weights, backward_weights, deconv_weights, concat_weights)
 
-def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
-        rolling_rate, roll_idx, conv2=False, normalize=True, shared_weights=None):
+
+def create_rolling_struct(from_layers,
+                          data_shape,
+                          num_filters,
+                          strides,
+                          pads,
+                          rolling_rate,
+                          roll_idx,
+                          conv2=False,
+                          normalize=True,
+                          shared_weights=None):
     # strides 为 -1 时，实现方法，根据两层之间的尺寸比值
     rolling_layers = []
     from_layer_names = [l.name for l in from_layers]
@@ -138,12 +149,18 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
                 o_layer = mx.sym.Convolution(data=f_layer, weight=f_weight, bias=f_bias, \
                     num_filter=num_filter, stride=(1, 1), pad=(0, 0), kernel=(1, 1), \
                     name=o_layer_name)
-                o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
-                o_layer = mx.sym.Pooling(data=o_layer, pool_type="max",
-                    kernel=(2, 2), stride=(2, 2), name="pool_"+o_layer_name)
+                o_layer = mx.sym.relu(
+                    data=o_layer, name="relu_" + o_layer_name)
+                o_layer = mx.sym.Pooling(
+                    data=o_layer,
+                    pool_type="max",
+                    kernel=(2, 2),
+                    stride=(2, 2),
+                    name="pool_" + o_layer_name)
             else:
 
-                f_weight1x1, f_bias1x1, f_weight3x3, f_bias3x3 = forward_weights[i - 1]
+                f_weight1x1, f_bias1x1, f_weight3x3, f_bias3x3 = forward_weights[
+                    i - 1]
 
                 o_layer = mx.sym.Convolution(data=f_layer, weight=f_weight1x1, bias=f_bias1x1, \
                     num_filter=num_filter, stride=(1, 1), pad=(0, 0), kernel=(1, 1), \
@@ -165,7 +182,7 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
             o_layer = mx.sym.Convolution(data=f_layer, weight=b_weight, bias=b_bias, \
                 num_filter=num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), \
                 name=o_layer_name)
-            o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
+            o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
 
             next_layer_output_size = _get_sym_output_shape(
                 f_layer, (20, 3, data_shape, data_shape))
@@ -198,15 +215,25 @@ def create_rolling_struct(from_layers, data_shape, num_filters, strides, pads,
         o_layer = mx.sym.Convolution(data=o_layer, weight=c_weight, bias=c_bias, \
             num_filter=num_filters[i], kernel=(1, 1), stride=(1, 1), pad=(0, 0), \
             name=o_layer_name)
-        o_layer = mx.sym.relu(data=o_layer, name="relu_"+o_layer_name)
+        o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
 
         rolling_layers.append(o_layer)
 
     return rolling_layers
 
-def add_multibox_and_loss_for_extra(extra_layers, label, num_classes, num_filters,
-        sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
-        force_suppress=False, nms_topk=400, rolling_idx=0):
+
+def add_multibox_and_loss_for_extra(extra_layers,
+                                    label,
+                                    num_classes,
+                                    num_filters,
+                                    sizes,
+                                    ratios,
+                                    normalizations=-1,
+                                    steps=[],
+                                    nms_thresh=0.5,
+                                    force_suppress=False,
+                                    nms_topk=400,
+                                    rolling_idx=0):
 
     loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
@@ -216,70 +243,95 @@ def add_multibox_and_loss_for_extra(extra_layers, label, num_classes, num_filter
         *[anchor_boxes, label, cls_preds], overlap_threshold=.5, \
         ignore_label=-1, negative_mining_ratio=3, minimum_negative_samples=0, \
         negative_mining_thresh=.5, variances=(0.1, 0.1, 0.2, 0.2),
-        name="multibox_target_%d" % rolling_idx)
+        name="multibox_target_%d" % rolling_idx if rolling_idx else "multibox_target")
     loc_target = tmp[0]
     loc_target_mask = tmp[1]
     cls_target = tmp[2]
 
     cls_prob = mx.symbol.SoftmaxOutput(data=cls_preds, label=cls_target, \
         ignore_label=-1, use_ignore=True, grad_scale=1., multi_output=True, \
-        normalization='valid', name="cls_prob_%d" % rolling_idx)
-    loc_loss_ = mx.symbol.smooth_l1(name="loc_loss__%d" % rolling_idx, \
-        data=loc_target_mask * (loc_preds - loc_target), scalar=1.0)
+        normalization='valid', name="cls_prob_%d" % rolling_idx if rolling_idx else "cls_prob")
+    loc_loss_ = mx.symbol.smooth_l1(
+        name="loc_loss__%d" % rolling_idx if rolling_idx else "loc_loss_", \
+        data=loc_target_mask * (loc_preds - loc_target),
+        scalar=1.0)
     loc_loss = mx.symbol.MakeLoss(loc_loss_, grad_scale=1., \
-        normalization='valid', name="loc_loss_%d" % rolling_idx)
+        normalization='valid', name="loc_loss_%d" % rolling_idx if rolling_idx else "loc_loss")
 
     # monitoring training status
     cls_label = mx.symbol.MakeLoss(
-        data=cls_target, grad_scale=0, name="cls_label_%d" % rolling_idx)
-    det = mx.contrib.symbol.MultiBoxDetection(*[cls_prob, loc_preds, anchor_boxes], \
-        name="detection_%d" % rolling_idx, nms_threshold=nms_thresh, force_suppress=force_suppress,
-        variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
-    det = mx.symbol.MakeLoss(data=det, grad_scale=0, name="det_out_%d" % rolling_idx)
+        data=cls_target,
+        grad_scale=0,
+        name="cls_label_%d" % rolling_idx if rolling_idx else "cls_label")
+    det = mx.contrib.symbol.MultiBoxDetection(
+        *[cls_prob, loc_preds, anchor_boxes],
+        name="detection_%d" % rolling_idx if rolling_idx else "detection",
+        nms_threshold=nms_thresh,
+        force_suppress=force_suppress,
+        variances=(0.1, 0.1, 0.2, 0.2),
+        nms_topk=nms_topk)
+    det = mx.symbol.MakeLoss(
+        data=det,
+        grad_scale=0,
+        name="det_out_%d" % rolling_idx if rolling_idx else "det_out")
 
     # group output
     out = mx.symbol.Group([cls_prob, loc_loss, cls_label, det])
 
     return out
 
-def add_multibox_for_extra(extra_layers, num_classes, num_filters,
-        sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
-        force_suppress=False, nms_topk=400, rolling_idx=0):
+
+def add_multibox_for_extra(extra_layers,
+                           num_classes,
+                           num_filters,
+                           sizes,
+                           ratios,
+                           normalizations=-1,
+                           steps=[],
+                           nms_thresh=0.5,
+                           force_suppress=False,
+                           nms_topk=400,
+                           rolling_idx=0):
 
     loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
         num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
 
     cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode='channel', \
-        name='cls_prob_%d' % rolling_idx)
-    out = mx.contrib.symbol.MultiBoxDetection(*[cls_prob, loc_preds, anchor_boxes], \
-        name="detection_%d" % rolling_idx, nms_threshold=nms_thresh, force_suppress=force_suppress,
-        variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
+        name='cls_prob_%d' % rolling_idx if rolling_idx else "cls_prob")
+    out = mx.contrib.symbol.MultiBoxDetection(
+        *[cls_prob, loc_preds, anchor_boxes],
+        name="detection_%d" % rolling_idx if rolling_idx else "detection",
+        nms_threshold=nms_thresh,
+        force_suppress=force_suppress,
+        variances=(0.1, 0.1, 0.2, 0.2),
+        nms_topk=nms_topk)
 
     return out
 
 
-def get_symbol_rolling_train(
-                            rolling_time,
-                            network,
-                            num_classes,
-                            from_layers,
-                            num_filters,
-                            strides,
-                            pads,
-                            sizes,
-                            ratios,
-                            normalizations=-1,
-                            steps=[],
-                            min_filter=128,
-                            nms_thresh=0.5,
-                            force_suppress=False,
-                            nms_topk=400,
-                            **kwargs):
+def get_symbol_rolling_train(rolling_time,
+                             network,
+                             num_classes,
+                             from_layers,
+                             num_filters,
+                             strides,
+                             pads,
+                             sizes,
+                             ratios,
+                             normalizations=-1,
+                             steps=[],
+                             min_filter=128,
+                             nms_thresh=0.5,
+                             force_suppress=False,
+                             nms_topk=400,
+                             **kwargs):
     """Build network symbol for training SSD
 
     Parameters
     ----------
+    rolling_time: int
+        rolling time
     network : str
         base network symbol name
     num_classes : int
@@ -331,9 +383,18 @@ def get_symbol_rolling_train(
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
     # group output
-    out = add_multibox_and_loss_for_extra(layers, label=label, num_classes=num_classes,
-        num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
-        steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
+    out = add_multibox_and_loss_for_extra(
+        layers,
+        label=label,
+        num_classes=num_classes,
+        num_filters=num_filters,
+        sizes=sizes,
+        ratios=ratios,
+        normalizations=normalizations,
+        steps=steps,
+        nms_thresh=nms_thresh,
+        force_suppress=force_suppress,
+        nms_topk=nms_topk,
         rolling_idx=0)
 
     outputs = [out]
@@ -348,9 +409,18 @@ def get_symbol_rolling_train(
             num_filters=num_filters, strides=strides, pads=pads, rolling_rate=rolling_rate, \
             roll_idx=roll_idx, conv2=False, normalize=True, shared_weights=shared_weights)
 
-        out = add_multibox_and_loss_for_extra(roll_layers, label=label, num_classes=num_classes,
-            num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
-            steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
+        out = add_multibox_and_loss_for_extra(
+            roll_layers,
+            label=label,
+            num_classes=num_classes,
+            num_filters=num_filters,
+            sizes=sizes,
+            ratios=ratios,
+            normalizations=normalizations,
+            steps=steps,
+            nms_thresh=nms_thresh,
+            force_suppress=force_suppress,
+            nms_topk=nms_topk,
             rolling_idx=roll_idx)
 
         outputs.append(out)
@@ -359,23 +429,23 @@ def get_symbol_rolling_train(
 
     return mx.symbol.Group(outputs)
 
-def get_symbol_rolling_test(
-                rolling_time,
-                network,
-                num_classes,
-                from_layers,
-                num_filters,
-                sizes,
-                ratios,
-                strides,
-                pads,
-                normalizations=-1,
-                steps=[],
-                min_filter=128,
-                nms_thresh=0.5,
-                force_suppress=False,
-                nms_topk=400,
-                **kwargs):
+
+def get_symbol_rolling_test(rolling_time,
+                            network,
+                            num_classes,
+                            from_layers,
+                            num_filters,
+                            sizes,
+                            ratios,
+                            strides,
+                            pads,
+                            normalizations=-1,
+                            steps=[],
+                            min_filter=128,
+                            nms_thresh=0.5,
+                            force_suppress=False,
+                            nms_topk=400,
+                            **kwargs):
     """Build network for testing SSD
 
     Parameters
@@ -444,12 +514,28 @@ def get_symbol_rolling_test(
     shared_weights = _get_shared_weights(len(layers), strides)
 
     for roll_idx in range(1, rolling_time + 1):
-        roll_layers = create_rolling_struct(layers, kwargs["data_shape"], num_filters=num_filters,
-            strides=strides, pads=pads, rolling_rate=rolling_rate, roll_idx=roll_idx,
-            conv2=False, normalize=True, shared_weights=shared_weights)
-        out = add_multibox_for_extra(roll_layers, num_classes=num_classes,
-            num_filters=num_filters, sizes=sizes, ratios=ratios, normalizations=normalizations,
-            steps=steps, nms_thresh=nms_thresh, force_suppress=force_suppress, nms_topk=nms_topk,
+        roll_layers = create_rolling_struct(
+            layers,
+            kwargs["data_shape"],
+            num_filters=num_filters,
+            strides=strides,
+            pads=pads,
+            rolling_rate=rolling_rate,
+            roll_idx=roll_idx,
+            conv2=False,
+            normalize=True,
+            shared_weights=shared_weights)
+        out = add_multibox_for_extra(
+            roll_layers,
+            num_classes=num_classes,
+            num_filters=num_filters,
+            sizes=sizes,
+            ratios=ratios,
+            normalizations=normalizations,
+            steps=steps,
+            nms_thresh=nms_thresh,
+            force_suppress=force_suppress,
+            nms_topk=nms_topk,
             rolling_idx=roll_idx)
 
         outputs.append(out)

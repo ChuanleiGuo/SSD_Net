@@ -258,10 +258,7 @@ def train_net(network,
         logger.addHandler(fh)
 
     # check args
-    if rolling:
-        prefix = prefix + "rolling_" + network + "_"
-    else:
-        prefix = prefix + network + "_"
+    prefix = prefix + network + "_"
 
     if isinstance(data_shape, int):
         data_shape = (3, data_shape, data_shape)
@@ -329,7 +326,7 @@ def train_net(network,
         begin_epoch = finetune
         # check what layers mismatch with the loaded parameters
         exe = net.simple_bind(
-            mx.cpu(), data=(1, 3, 300, 300), label=(1, 1, 5), grad_req='null')
+            mx.cpu(), data=(1, 3, data_shape[1], data_shape[1]), label=(1, 1, 5), grad_req='null')
         arg_dict = exe.arg_dict
         fixed_param_names = []
         for k, v in arg_dict.items():

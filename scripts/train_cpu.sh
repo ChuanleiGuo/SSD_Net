@@ -2,7 +2,7 @@
 
 # this is a training script
 # defining global parameters
-#TRAIN_REC_PATH=./data/train.rec
+# TRAIN_REC_PATH=./data/train.rec
 # VAL_REC_PATH=./data/val.rec
 TRAIN_REC_PATH=/Users/chuan/Developer/VOCdevkit/data/train.rec
 VAL_REC_PATH=/Users/chuan/Developer/VOCdevkit/data/val.rec
@@ -10,6 +10,7 @@ NETWORK=resnet50
 BATCH_SIZE=1
 DATA_SHAPE=512
 PRETRAINED=./model/ssd_resnet50_512
+PREFIX=./model/ssd_
 OPTIMIZER=adam
 TENSORBOARD=True
 LR_STEPS=20,40,60
@@ -21,7 +22,8 @@ python ./train.py \
     --batch-size ${BATCH_SIZE} \
     --data-shape ${DATA_SHAPE} \
     --gpus "" \
-    --pretrained ${PRETRAINED} \
+    --prefix ${PREFIX} \
+    --finetune 222 \
     --epoch 222 \
     --optimizer ${OPTIMIZER} \
     --tensorboard ${TENSORBOARD} \
@@ -29,4 +31,4 @@ python ./train.py \
     --freeze '' \
     --rolling True \
     --rolling_time 4 \
-    --end-epoch 1
+    --end-epoch 223
