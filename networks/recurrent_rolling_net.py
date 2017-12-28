@@ -208,9 +208,9 @@ def add_multibox_and_loss_for_extra(extra_layers, label, num_classes, num_filter
         sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
         force_suppress=False, nms_topk=400, rolling_idx=0):
 
-    loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
+    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-        num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=5)
+        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
 
     tmp = mx.contrib.symbol.MultiBoxTarget(
         *[anchor_boxes, label, cls_preds], overlap_threshold=.5, \
@@ -246,9 +246,9 @@ def add_multibox_for_extra(extra_layers, num_classes, num_filters,
         sizes, ratios, normalizations=-1, steps=[], nms_thresh=0.5,
         force_suppress=False, nms_topk=400, rolling_idx=0):
 
-    loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
+    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-        num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=5)
+        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
 
     cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode='channel', \
         name='cls_prob_%d' % rolling_idx)
@@ -429,9 +429,9 @@ def get_symbol_rolling_test(
     layers = multi_layer_feature(
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
-    loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(layers, \
+    loc_preds, cls_preds, anchor_boxes = multibox_layer(layers, \
         num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+        num_channels=num_filters, clip=False, interm_layer=0)
 
     cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode='channel', \
         name='cls_prob')
