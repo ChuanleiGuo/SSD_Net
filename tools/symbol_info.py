@@ -1,10 +1,12 @@
 import os
 import sys
+from pprint import pprint
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from networks.symbol_factory import get_config
 from networks.symbol_builder import get_symbol_train
+from networks.recurrent_rolling_net import get_symbol_rolling_train
 
-def make_net(network, data_shape):
+def make_net(network, data_shape, rolling=False, rolling_time=4):
     kwargs = {
         "num_classes": 20,
         "nms_thresh": 0.45,
@@ -17,12 +19,15 @@ def make_net(network, data_shape):
     config.update(kwargs)
     assert network.startswith(config["network"])
     assert data_shape == config["data_shape"]
-    net = get_symbol_train(**config)
+    if rolling:
+        net = get_symbol_rolling_train(rolling_time, **config)
+    else:
+        net = get_symbol_train(**config)
     return net
 
-def output_shape_of_layers(net, layers, input_shape):
+def output_shape_of_layers(net, layers, input_shape, rolling=False):
 
-    net = make_net(net, input_shape)
+    net = make_net(net, input_shape, rolling=rolling, rolling_time=4)
 
     internals = net.get_internals()
 
@@ -34,11 +39,11 @@ def output_shape_of_layers(net, layers, input_shape):
         res.append(output_shapes[0])
     return res
 
-def output_info(net_infos):
+def output_info(net_infos, rolling=False):
     res = []
     for net in net_infos:
         output_shapes = output_shape_of_layers(
-            net["network"], net["from_layers"], net["data_shape"])
+            net["network"], net["from_layers"], net["data_shape"], rolling=rolling)
         net["output_shapes"] = output_shapes
         res.append(net)
     return res
@@ -48,12 +53,12 @@ def main():
         {
             "network": "vgg16_reduced",
             "data_shape": 300,
-            "from_layers": ['relu4_3', 'relu7']
+            "from_layers": ['relu4_3', 'relu7'] + ["multi_feat_%d_conv_3x3_relu" % k for k in range(2, 6)]
         },
         {
             "network": "vgg16_reduced",
             "data_shape": 512,
-            "from_layers": ['relu4_3', 'relu7']
+            "from_layers": ['relu4_3', 'relu7'] + ["multi_feat_%d_conv_3x3_relu" % k for k in range(2, 7)]
         },
         {
             "network": "inceptionv3",
@@ -68,13 +73,13 @@ def main():
         {
             "network": "resnet50",
             "data_shape": 512,
-            "from_layers": ['_plus12', '_plus15']
+            "from_layers": ['_plus12', '_plus15'] + ["multi_feat_%d_conv_3x3_relu" % k for k in range(2, 6)]
         },
-        # {
-        #     "network": "resnet101",
-        #     "data_shape": 512,
-        #     "from_layers": ['_plus12', '_plus15']
-        # },
+        {
+            "network": "resnet101",
+            "data_shape": 512,
+            "from_layers": ['_plus29', '_plus32'] + ["multi_feat_%d_conv_3x3_relu" % k for k in range(2, 6)]
+        },
         {
             "network": "densenet121",
             "data_shape": 512,
@@ -88,8 +93,18 @@ def main():
     ]
 
     res = output_info(net_infos)
-    print(res)
-    return res
+    pprint(res)
+
+    print('-' * 10  + "Rolling" + '-' * 10)
+    net_infos = [
+        {
+            "network": "resnet50-rolling",
+            "data_shape": 512,
+            "from_layers": ["multi_feat_%d_conv_3x3_relu" % k for k in range(0, 6)]
+        }
+    ]
+    res = output_info(net_infos, rolling=True)
+    pprint(res)
 
 
 if __name__ == '__main__':
