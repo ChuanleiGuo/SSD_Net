@@ -88,12 +88,12 @@ if __name__ == "__main__":
     if args.class_names is not None:
         assert args.target is not None, 'for a subset of classes, specify a target path. Its for your own safety'
     if args.dataset == "pascal":
-        db = load_pascal(args.dataset, args.year, args.root_path, args.shuffle,
+        db = load_pascal(args.set, args.year, args.root_path, args.shuffle,
                          args.class_names, args.true_negative)
         print("saving list to disk...")
         db.save_imglist(args.target, root=args.root_path)
     elif args.dataset == "kitti":
-        db = load_kitti(args.dataset, args.root_path, shuffle=args.shuffle,
+        db = load_kitti(args.set, args.root_path, shuffle=args.shuffle,
                         class_names=args.class_names, true_negative=args.true_negative)
         print("saving list to disk...")
         db.save_imglist(args.target, root=args.root_path)
