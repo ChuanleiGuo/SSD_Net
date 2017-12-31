@@ -182,3 +182,19 @@ class KITTIVoc(Imdb):
         """
         assert self.labels is not None, "Labels not processed"
         return self.labels[index]
+
+    def image_path_from_index(self, index):
+        """
+        given image index, find out full path
+
+        # Parameters:
+        index: int
+            index of a specific image
+        # Returns:
+        full path of the image
+        """
+        assert self.image_set_index is not None, "Dataset not initialized"
+        name = self.image_set_index[index]
+        image_file = os.path.join(self.data_path, name + self.extension)
+        assert os.path.exists(image_file), "Path does not exist: {}".format(image_file)
+        return image_file
