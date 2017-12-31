@@ -152,7 +152,7 @@ class KITTIVoc(Imdb):
             label = []
 
             for obj in root.iter("object"):
-                difficult = int(obj.find("difficult").text)
+                difficult = int(obj.find("difficult").text if obj.find("difficult") else 0)
                 cls_name = obj.find("name").text
                 if cls_name not in self.classes:
                     cls_id = len(self.classes)
