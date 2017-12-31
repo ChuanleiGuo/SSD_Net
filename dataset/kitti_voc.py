@@ -128,7 +128,7 @@ class KITTIVoc(Imdb):
         ----------
         full path of annotation file
         """
-        label_file = os.path.join(self.data_path, "label_2car", index + "xml")
+        label_file = os.path.join(self.data_path, "label_2car", "xml", index + ".xml")
         assert os.path.exists(label_file), 'Path does not exist: {}'.format(label_file)
         return label_file
 
