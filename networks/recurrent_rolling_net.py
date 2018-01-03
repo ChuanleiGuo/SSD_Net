@@ -96,6 +96,7 @@ def _get_shared_weights(num_layers, strides):
 
     return (forward_weights, backward_weights, deconv_weights, concat_weights)
 
+
 def multi_layer_feature(body,
                         from_layers,
                         num_filters,
@@ -188,6 +189,7 @@ def multi_layer_feature(body,
             layers.append(conv_3x3)
     return layers
 
+
 def create_rolling_struct(from_layers,
                           data_shape,
                           num_filters,
@@ -221,14 +223,15 @@ def create_rolling_struct(from_layers,
             o_layer_name = "%s_r%d" % (from_layer_names[i - 1], roll_idx)
 
             f_weight1x1, f_bias1x1, f_weight3x3, f_bias3x3 = forward_weights[
-                    i - 1]
+                i - 1]
 
             if strides[i] == -1:
 
                 o_layer = mx.sym.Convolution(data=f_layer, weight=f_weight1x1, bias=f_bias1x1, \
                     num_filter=num_filter, stride=(1, 1), pad=(0, 0), kernel=(1, 1), \
                     name=o_layer_name)
-                o_layer = mx.sym.relu(data=o_layer, name="relu1_" + o_layer_name)
+                o_layer = mx.sym.relu(
+                    data=o_layer, name="relu1_" + o_layer_name)
                 o_layer = mx.sym.Convolution(data=o_layer, weight=f_weight3x3, bias=f_bias3x3, \
                     num_filter=num_filter, stride=(1, 1), pad=(1, 1), kernel=(3, 3), \
                     name="conv3x3_" + o_layer_name)
@@ -245,12 +248,14 @@ def create_rolling_struct(from_layers,
                 o_layer = mx.sym.Convolution(data=f_layer, weight=f_weight1x1, bias=f_bias1x1, \
                     num_filter=num_filter, stride=(1, 1), pad=(0, 0), kernel=(1, 1), \
                     name=o_layer_name)
-                o_layer = mx.sym.relu(data=o_layer, name="relu1_" + o_layer_name)
+                o_layer = mx.sym.relu(
+                    data=o_layer, name="relu1_" + o_layer_name)
                 s, p = strides[i], pads[i]
                 o_layer = mx.sym.Convolution(data=o_layer, weight=f_weight3x3, bias=f_bias3x3, \
                     num_filter=num_filter, stride=(s, s), pad=(p, p), kernel=(3, 3), \
                     name="conv3x3_" + o_layer_name)
-                o_layer = mx.sym.relu(data=o_layer, name="relu3_" + o_layer_name)
+                o_layer = mx.sym.relu(
+                    data=o_layer, name="relu3_" + o_layer_name)
             f_layers.append(o_layer)
 
         f_layers.append(from_layers[i])
@@ -317,10 +322,16 @@ def add_multibox_and_loss_for_extra(extra_layers,
                                     force_suppress=False,
                                     nms_topk=400,
                                     rolling_idx=0):
-
-    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
-        num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+    if len(sizes) == len(extra_layers):
+        loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
+            num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
+            num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+    elif len(sizes) > len(extra_layers):
+        loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
+            num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
+            num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=4)
+    else:
+        raise ValueError("wrong number of sizes")
 
     tmp = mx.contrib.symbol.MultiBoxTarget(
         *[anchor_boxes, label, cls_preds], overlap_threshold=.5, \
@@ -375,10 +386,16 @@ def add_multibox_for_extra(extra_layers,
                            force_suppress=False,
                            nms_topk=400,
                            rolling_idx=0):
-
-    loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
-        num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-        num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+    if len(sizes) > len(extra_layers):
+        loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
+            num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
+            num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=4)
+    elif len(sizes) == len(extra_layers):
+        loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
+            num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
+            num_channels=num_filters, clip=False, interm_layer=0, steps=steps)
+    else:
+        raise ValueError("Wrong number of sizes")
 
     cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode='channel', \
         name='cls_prob_%d' % rolling_idx if rolling_idx else "cls_prob")
@@ -465,6 +482,8 @@ def get_symbol_rolling_train(rolling_time,
     layers = multi_layer_feature(
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
+    assert len(sizes) == len(from_layers) or len(sizes) == (
+        (len(from_layers) - 1) * rolling_time + 1)
     # group output
     out = add_multibox_and_loss_for_extra(
         layers,
@@ -582,9 +601,14 @@ def get_symbol_rolling_test(rolling_time,
     layers = multi_layer_feature(
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
-    loc_preds, cls_preds, anchor_boxes = multibox_layer(layers, \
-        num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-        num_channels=num_filters, clip=False, interm_layer=0)
+    if len(sizes) == (len(from_layers) - 1) * rolling_time + 1:
+        loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(layers, \
+            num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
+            num_channels=num_filters, clip=False, interm_layer=0, branch_num=4)
+    elif len(sizes) == len(from_layers):
+        loc_preds, cls_preds, anchor_boxes = multibox_layer(layers, \
+            num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
+            num_channels=num_filters, clip=False, interm_layer=0)
 
     cls_prob = mx.symbol.SoftmaxActivation(data=cls_preds, mode='channel', \
         name='cls_prob')

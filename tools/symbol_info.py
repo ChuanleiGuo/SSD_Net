@@ -102,11 +102,16 @@ def main():
 
     print('-' * 10  + "Rolling" + '-' * 10)
     net_infos = [
+        # {
+        #     "network": "resnet50-rolling",
+        #     "data_shape": (2560, 768),
+        #     "from_layers": ["multi_feat_%d_conv_3x3_relu" % k for k in range(0, 6)]
+        # },
         {
-            "network": "resnet50-rolling",
+            "network": "resnet50-rb",
             "data_shape": (2560, 768),
             "from_layers": ["multi_feat_%d_conv_3x3_relu" % k for k in range(0, 6)]
-        }
+        },
     ]
     res = output_info(net_infos, rolling=True)
     pprint(res)

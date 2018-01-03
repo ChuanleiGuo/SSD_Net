@@ -5,7 +5,12 @@ import numpy as np
 import networks.symbol_builder as symbol_builder
 from networks.recurrent_rolling_net import get_symbol_rolling_train, get_symbol_rolling_test
 
-def get_scales(min_scale=0.2, max_scale=0.9, num_layers=6):
+
+def get_scales(min_scale=0.2,
+               max_scale=0.9,
+               num_layers=6,
+               branch=False,
+               branch_num=4):
     """
     Following the ssd arxiv paper, regarding the calculation of scales & ratios
 
@@ -36,12 +41,31 @@ def get_scales(min_scale=0.2, max_scale=0.9, num_layers=6):
     min_sizes = [int(100 * min_scale / 2.0) / 100.0] + min_sizes
     max_sizes = [min_scale] + max_sizes
 
+    if branch:
+        min_sizes_b = []
+        max_sizes_b = []
+        for i in range(0, len(min_sizes) - 1):
+            for j in range(0, branch_num):
+                min_sizes_b.append(min_sizes[i] + j * (
+                    min_sizes[i + 1] - min_sizes[i]) / branch_num)
+        min_sizes_b.append(min_sizes[-1])
+
+        for i in range(0, len(min_sizes_b) - 1):
+            max_sizes_b.append(min_sizes_b[i + 1])
+        max_sizes_b.append(max_sizes[-1])
+
+        min_sizes, max_sizes = min_sizes_b, max_sizes_b
+
+    nums = num_layers if not branch else len(min_sizes)
     scales = []
-    for layer_idx in range(num_layers):
+    for layer_idx in range(nums):
         scales.append([
             min_sizes[layer_idx],
-            np.single(np.sqrt(min_sizes[layer_idx] * max_sizes[layer_idx]))])
+            np.single(np.sqrt(min_sizes[layer_idx] * max_sizes[layer_idx]))
+        ])
+
     return scales
+
 
 def get_config(network, data_shape, **kwargs):
     """Configuration factory for various networks
@@ -61,7 +85,8 @@ def get_config(network, data_shape, **kwargs):
             num_filters = [512, 1024, 512, 256, 256, 256, 256]
             strides = [-1, -1, 2, 2, 2, 2, 2]
             pads = [-1, -1, 1, 1, 1, 1, 1]
-            sizes = get_scales(min_scale=0.15, max_scale=0.9, num_layers=len(from_layers))
+            sizes = get_scales(
+                min_scale=0.15, max_scale=0.9, num_layers=len(from_layers))
             ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
                 [1,2,.5,3,1./3], [1,2,.5], [1,2,.5]]
             normalizations = [20, -1, -1, -1, -1, -1, -1]
@@ -73,7 +98,8 @@ def get_config(network, data_shape, **kwargs):
             num_filters = [512, 1024, 512, 256, 256, 256]
             strides = [-1, -1, 2, 2, 1, 1]
             pads = [-1, -1, 1, 1, 0, 0]
-            sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+            sizes = get_scales(
+                min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
             ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
                 [1,2,.5], [1,2,.5]]
             normalizations = [20, -1, -1, -1, -1, -1]
@@ -86,21 +112,29 @@ def get_config(network, data_shape, **kwargs):
         return locals()
     elif network == 'inceptionv3':
         if data_shape >= 448:
-            from_layers = ['ch_concat_mixed_7_chconcat', 'ch_concat_mixed_10_chconcat', '', '', '', '']
+            from_layers = [
+                'ch_concat_mixed_7_chconcat', 'ch_concat_mixed_10_chconcat',
+                '', '', '', ''
+            ]
             num_filters = [768, 2048, 512, 256, 256, 128]
             strides = [-1, -1, 2, 2, 2, 2]
             pads = [-1, -1, 1, 1, 1, 1]
-            sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+            sizes = get_scales(
+                min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
             ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
                 [1,2,.5], [1,2,.5]]
             normalizations = -1
             steps = []
         else:
-            from_layers = ['ch_concat_mixed_2_chconcat', 'ch_concat_mixed_7_chconcat', 'ch_concat_mixed_10_chconcat', '', '', '']
+            from_layers = [
+                'ch_concat_mixed_2_chconcat', 'ch_concat_mixed_7_chconcat',
+                'ch_concat_mixed_10_chconcat', '', '', ''
+            ]
             num_filters = [288, 768, 2048, 256, 256, 128]
             strides = [-1, -1, -1, 2, 2, 2]
             pads = [-1, -1, -1, 1, 1, 1]
-            sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+            sizes = get_scales(
+                min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
             ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
                 [1,2,.5], [1,2,.5]]
             normalizations = -1
@@ -114,7 +148,8 @@ def get_config(network, data_shape, **kwargs):
         num_filters = [1024, 2048, 512, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
-        sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+        sizes = get_scales(
+            min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
         ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5], [1,2,.5]]
         normalizations = -1
@@ -128,7 +163,27 @@ def get_config(network, data_shape, **kwargs):
         num_filters = [256, 256, 256, 256, 256, 256]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
-        sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+        sizes = get_scales(
+            min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5], [1,2,.5]]
+        normalizations = -1
+        steps = []
+        return locals()
+    elif network == "resnet50-rb":
+        num_layers = 50
+        image_shape = '3,224,224'  # resnet require it as shape check
+        network = "resnet"
+        from_layers = ['_plus12', '_plus15', '', '', '', '']
+        num_filters = [256, 256, 256, 256, 256, 256]
+        strides = [-1, -1, 2, 2, 2, 2]
+        pads = [-1, -1, 1, 1, 1, 1]
+        sizes = get_scales(
+            min_scale=0.15,
+            max_scale=0.85,
+            num_layers=len(from_layers),
+            branch=True,
+            branch_num=4)
         ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5], [1,2,.5]]
         normalizations = -1
@@ -142,7 +197,8 @@ def get_config(network, data_shape, **kwargs):
         num_filters = [1024, 1024, 512, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
-        sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+        sizes = get_scales(
+            min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
         ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5], [1,2,.5]]
         normalizations = -1
@@ -153,7 +209,8 @@ def get_config(network, data_shape, **kwargs):
         num_filters = [512, 512, 512, 256, 256, 256, 256]
         strides = [-1, -1, 2, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1, 1]
-        sizes = get_scales(min_scale=0.15, max_scale=0.9, num_layers=len(from_layers))
+        sizes = get_scales(
+            min_scale=0.15, max_scale=0.9, num_layers=len(from_layers))
         ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5,3,1./3], [1,2,.5], [1,2,.5]]
         normalizations = -1
@@ -166,11 +223,14 @@ def get_config(network, data_shape, **kwargs):
         num_stage = 4
         growth_rate = 32
         bottle_neck = True
-        from_layers = ['DBstage3_concat24', 'DBstage4_concat16', '', '', '', '']
+        from_layers = [
+            'DBstage3_concat24', 'DBstage4_concat16', '', '', '', ''
+        ]
         num_filters = [1024, 1024, 256, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
-        sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+        sizes = get_scales(
+            min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
         ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5], [1,2,.5]]
         normalizations = -1
@@ -183,11 +243,14 @@ def get_config(network, data_shape, **kwargs):
         num_stage = 4
         growth_rate = 16
         bottle_neck = True
-        from_layers = ['DBstage2_concat12', 'DBstage3_concat18', '', '', '', '']
+        from_layers = [
+            'DBstage2_concat12', 'DBstage3_concat18', '', '', '', ''
+        ]
         num_filters = [256, 416, 256, 256, 256, 128]
         strides = [-1, -1, 2, 2, 2, 2]
         pads = [-1, -1, 1, 1, 1, 1]
-        sizes = get_scales(min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+        sizes = get_scales(
+            min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
         ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5], [1,2,.5]]
         normalizations = -1
@@ -199,7 +262,11 @@ def get_config(network, data_shape, **kwargs):
         raise NotImplementedError(msg)
 
 
-def get_symbol_train(network, data_shape, rolling=False, rolling_time=4, **kwargs):
+def get_symbol_train(network,
+                     data_shape,
+                     rolling=False,
+                     rolling_time=4,
+                     **kwargs):
     """Wrapper for get symbol for train
 
     Parameters

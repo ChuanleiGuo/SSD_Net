@@ -393,8 +393,8 @@ def branched_multibox_layer(from_layers,
         "ratios and from_layers must have same length"
 
     assert len(sizes) > 0, "sizes must not be empty list"
-    assert len(sizes) == len(from_layers), \
-        "sizes and from layers must have same length"
+    assert len(sizes) == branch_num * (len(from_layers) - 1) + 1, \
+        "wrong number of sizes, len(sizes)={}, not {}".format(len(sizes), branch_num * (len(from_layers) - 1) + 1)
 
     if not isinstance(normalization, list):
         normalization = [normalization] * len(from_layers)
@@ -431,15 +431,12 @@ def branched_multibox_layer(from_layers,
 
         repeat_time = branch_num if k != len(from_layers) - 1 else 1
         for mbox_idx in range(repeat_time):
-            if k < len(from_layers) - 1:
-                min_size = sizes[k][0] + mbox_idx * (
-                    sizes[k + 1][0] - sizes[k][0]) / branch_num
-                max_size = sizes[k][1] + mbox_idx * (
-                    sizes[k + 1][1] - sizes[k][1]) / branch_num
-                size = [min_size, max_size]
-            else:
-                size = sizes[k]
-
+            min_size = sizes[k * branch_num + mbox_idx][0]
+            max_size = sizes[k * branch_num + mbox_idx][1]
+            size = [min_size, max_size]
+            print(
+                "extra_layer_idx: {}, branch_idx: {}, anchor_size: {}".format(
+                    k, mbox_idx, size))
             #size = sizes[k]
             assert len(size) > 0, "must provide at least one size"
             size_str = "(" + ",".join([str(x) for x in size]) + ")"
