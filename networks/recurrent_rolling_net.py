@@ -145,17 +145,17 @@ def multi_layer_feature(body,
             # extract from base network
             layer = internals[from_layer.strip() + '_output']
             #layers.append(layer)
-            num1x1 = max(min_filter, num_filter // 2)
-            conv_1x1 = conv_act_layer(
-                layer,
-                "multi_feat_%d_conv_1x1" % (k),
-                num1x1,
-                kernel=(1, 1),
-                pad=(0, 0),
-                stride=(1, 1),
-                act_type="relu")
+            # num1x1 = max(min_filter, num_filter // 2)
+            # conv_1x1 = conv_act_layer(
+            #     layer,
+            #     "multi_feat_%d_conv_1x1" % (k),
+            #     num1x1,
+            #     kernel=(1, 1),
+            #     pad=(0, 0),
+            #     stride=(1, 1),
+            #     act_type="relu")
             conv_3x3 = conv_act_layer(
-                conv_1x1,
+                layer,
                 "multi_feat_%d_conv_3x3" % (k),
                 num_filter,
                 kernel=(3, 3),
