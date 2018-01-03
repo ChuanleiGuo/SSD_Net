@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 from pprint import pprint
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from networks.symbol_factory import get_config
@@ -110,6 +111,18 @@ def main():
     res = output_info(net_infos, rolling=True)
     pprint(res)
 
+
+def prior_sizes(width, height, min_ratio, max_ratio, source_layers):
+    min_dim = min(width, height)
+    step = int(math.floor((max_ratio - min_ratio) / (len(source_layers) - 2)))
+    min_sizes = []
+    max_sizes = []
+    for ratio in range(min_ratio, max_ratio + 1, step):
+        min_sizes.append(min_dim * ratio / 100.)
+        max_sizes.append(min_dim * (ratio + step) / 100.)
+    min_sizes = [min_dim * 6.7 / 100.] + min_sizes
+    max_sizes = [[]] + max_sizes
+    return min_sizes, max_sizes
 
 if __name__ == '__main__':
     main()
