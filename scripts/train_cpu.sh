@@ -6,7 +6,7 @@
 # VAL_REC_PATH=./data/val.rec
 TRAIN_REC_PATH=/Users/chuan/Developer/VOCdevkit/data/train.rec
 VAL_REC_PATH=/Users/chuan/Developer/VOCdevkit/data/val.rec
-NETWORK=resnet50-rolling
+NETWORK=resnet50-rb
 BATCH_SIZE=1
 DATA_SHAPE=512
 PRETRAINED=./model/ssd_resnet50_512

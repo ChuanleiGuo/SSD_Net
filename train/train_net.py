@@ -339,7 +339,7 @@ def train_net(network,
                     del args[k]
                     logging.info("Removed %s" % k)
                 else:
-                    if not 'pred' in k:
+                    if not 'pred' in k or "multi_feat" in k:
                         fixed_param_names.append(k)
     elif pretrained:
         logger.info("Start training with {} from pretrained model {}".format(

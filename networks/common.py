@@ -434,9 +434,9 @@ def branched_multibox_layer(from_layers,
             min_size = sizes[k * branch_num + mbox_idx][0]
             max_size = sizes[k * branch_num + mbox_idx][1]
             size = [min_size, max_size]
-            print(
-                "extra_layer_idx: {}, branch_idx: {}, anchor_size: {}".format(
-                    k, mbox_idx, size))
+            # print(
+            #     "extra_layer_idx: {}, branch_idx: {}, anchor_size: {}".format(
+            #         k, mbox_idx, size))
             #size = sizes[k]
             assert len(size) > 0, "must provide at least one size"
             size_str = "(" + ",".join([str(x) for x in size]) + ")"
