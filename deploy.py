@@ -13,7 +13,7 @@ def parse_args():
                         default=0, type=int)
     parser.add_argument('--prefix', dest='prefix', help='trained model prefix',
                         default=os.path.join(os.getcwd(), 'model', 'ssd_'), type=str)
-    parser.add_argument('--data-shape', dest='data_shape', type=int, default=300,
+    parser.add_argument('--data-shape', dest='data_shape', type=int, nargs='+', default=[300],
                         help='data shape')
     parser.add_argument('--num-class', dest='num_classes', help='number of classes',
                         default=20, type=int)

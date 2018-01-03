@@ -102,7 +102,8 @@ def parse_args():
         '--data-shape',
         dest='data_shape',
         type=int,
-        default=300,
+        nargs="+",
+        default=[300],
         help='set image shape')
     parser.add_argument(
         '--label-width',

@@ -260,8 +260,12 @@ def train_net(network,
     # check args
     prefix = prefix + network + "_"
 
-    if isinstance(data_shape, int):
-        data_shape = (3, data_shape, data_shape)
+    if len(data_shape) == 1:
+        data_shape = (3, data_shape[0], data_shape[0])
+    elif len(data_shape) == 2:
+        data_shape = (3, data_shape[0], data_shape[1])
+    else:
+        data_shape = tuple(data_shape)
     assert len(data_shape) == 3 and data_shape[0] == 3
     if prefix.endswith('_'):
         prefix += str(data_shape[1])
