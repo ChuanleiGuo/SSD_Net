@@ -336,11 +336,11 @@ def train_net(network,
         fixed_param_names = []
         for k, v in arg_dict.items():
             if k in args:
-                if v.shape != args[k].shape:
+                if v.shape != args[k].shape or "multi_feat" in k:
                     del args[k]
                     logging.info("Removed %s" % k)
                 else:
-                    if not 'pred' in k or "multi_feat" in k:
+                    if not 'pred' in k:
                         fixed_param_names.append(k)
     elif pretrained:
         logger.info("Start training with {} from pretrained model {}".format(
