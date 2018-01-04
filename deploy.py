@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import mxnet as mx
 import os
