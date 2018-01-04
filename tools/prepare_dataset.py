@@ -103,9 +103,9 @@ if __name__ == "__main__":
 
     print("List file {} generated...".format(args.target))
 
-    im2rec_path = os.path.join(curr_path, 'tools/im2rec.py')
+    im2rec_path = os.path.join(curr_path, 'im2rec.py')
     if not os.path.exists(im2rec_path):
-        im2rec_path = os.path.join(curr_path, 'tools/im2rec.py')
+        im2rec_path = os.path.join(curr_path, 'im2rec.py')
     subprocess.check_call(["python", im2rec_path,
         os.path.abspath(args.target), os.path.abspath(args.root_path),
         "--shuffle", str(int(args.shuffle)), "--pack-label", "1"])
