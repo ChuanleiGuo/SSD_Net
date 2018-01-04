@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import mxnet as mx
 import numpy as np

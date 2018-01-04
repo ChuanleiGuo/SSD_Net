@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Adapted from https://github.com/tornadomeet/ResNet/blob/master/symbol_resnet.py
 Original author Wei Wu

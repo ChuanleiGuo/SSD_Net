@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 given a pascal voc imdb, compute mAP
 """

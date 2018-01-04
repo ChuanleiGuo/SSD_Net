@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import mxnet as mx
 
 def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True,

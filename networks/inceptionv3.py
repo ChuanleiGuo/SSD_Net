@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import mxnet as mx
 
 def Conv(data,

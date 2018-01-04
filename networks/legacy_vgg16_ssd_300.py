@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import mxnet as mx
 from .common import legacy_conv_act_layer
 from .common import multibox_layer

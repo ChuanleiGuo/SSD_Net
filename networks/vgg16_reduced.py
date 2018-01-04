@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import mxnet as mx
 
 def get_symbol(num_classes=1000, **kwargs):

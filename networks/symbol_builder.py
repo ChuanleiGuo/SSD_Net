@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import mxnet as mx
 from networks.common import multi_layer_feature, multibox_layer
