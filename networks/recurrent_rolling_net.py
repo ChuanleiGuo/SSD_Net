@@ -322,7 +322,8 @@ def add_multibox_and_loss_for_extra(extra_layers,
                                     nms_thresh=0.5,
                                     force_suppress=False,
                                     nms_topk=400,
-                                    rolling_idx=0):
+                                    rolling_idx=0,
+                                    mbox_shared_weights=None):
     if len(sizes) == len(extra_layers):
         loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
             num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
@@ -330,7 +331,8 @@ def add_multibox_and_loss_for_extra(extra_layers,
     elif len(sizes) > len(extra_layers):
         loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
             num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-            num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=4)
+            num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=4, \
+            shared_weights=mbox_shared_weights)
     else:
         raise ValueError("wrong number of sizes")
 
@@ -386,11 +388,13 @@ def add_multibox_for_extra(extra_layers,
                            nms_thresh=0.5,
                            force_suppress=False,
                            nms_topk=400,
-                           rolling_idx=0):
+                           rolling_idx=0,
+                           mbox_shared_weights=None):
     if len(sizes) > len(extra_layers):
         loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
             num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-            num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=4)
+            num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=4, \
+            shared_weights=mbox_shared_weights)
     elif len(sizes) == len(extra_layers):
         loc_preds, cls_preds, anchor_boxes = multibox_layer(extra_layers, \
             num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
@@ -410,6 +414,41 @@ def add_multibox_for_extra(extra_layers,
 
     return out
 
+
+def _get_multibox_shared_weights(num_layers, branch_num):
+    shared_weights = []
+    for layer_idx in range(num_layers):
+        layer_mbox_weights = []
+        for branch_idx in range(branch_num):
+            loc_weight = mx.sym.Variable(
+                name="layer_{}_shared_mbox_loc_{}".format(layer_idx, branch_idx),
+                lr_mult=1,
+                wd_mult=1,
+                init=mx.init.Xavier()
+            )
+            loc_bias = mx.sym.Variable(
+                name="layer_{}_shared_mbox_loc_bias_{}".format(layer_idx, branch_idx),
+                lr_mult=2,
+                wd_mult=0,
+                init=mx.init.Constant(0)
+            )
+
+            conf_weight = mx.sym.Variable(
+                name="layer_{}_shared_mbox_conf_{}".format(layer_idx, branch_idx),
+                lr_mult=1,
+                wd_mult=1,
+                init=mx.init.Xavier()
+            )
+            conf_bias = mx.sym.Variable(
+                name="layer_{}_shared_mbox_conf_bias_{}".format(layer_idx, branch_idx),
+                lr_mult=2,
+                wd_mult=0,
+                init=mx.init.Constant(0)
+            )
+
+            layer_mbox_weights.append((loc_weight, loc_bias, conf_weight, conf_bias))
+        shared_weights.append(layer_mbox_weights)
+    return shared_weights
 
 def get_symbol_rolling_train(rolling_time,
                              network,
@@ -485,6 +524,10 @@ def get_symbol_rolling_train(rolling_time,
 
     assert len(sizes) == len(from_layers) or len(sizes) == (
         (len(from_layers) - 1) * rolling_time + 1)
+
+    mbox_shared_weights = None
+    if len(sizes) == ((len(from_layers) - 1) * rolling_time + 1):
+        mbox_shared_weights = _get_multibox_shared_weights(len(layers), 4)
     # group output
     out = add_multibox_and_loss_for_extra(
         layers,
@@ -498,7 +541,8 @@ def get_symbol_rolling_train(rolling_time,
         nms_thresh=nms_thresh,
         force_suppress=force_suppress,
         nms_topk=nms_topk,
-        rolling_idx=0)
+        rolling_idx=0,
+        mbox_shared_weights=mbox_shared_weights)
 
     outputs = [out]
 
@@ -524,7 +568,8 @@ def get_symbol_rolling_train(rolling_time,
             nms_thresh=nms_thresh,
             force_suppress=force_suppress,
             nms_topk=nms_topk,
-            rolling_idx=roll_idx)
+            rolling_idx=roll_idx,
+            mbox_shared_weights=mbox_shared_weights)
 
         outputs.append(out)
 

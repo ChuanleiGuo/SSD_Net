@@ -345,7 +345,8 @@ def branched_multibox_layer(from_layers,
                             clip=False,
                             interm_layer=0,
                             steps=[],
-                            branch_num=2):
+                            branch_num=2,
+                            shared_weights=None):
     """
     the basic aggregation module for SSD detection. Takes in multiple layers,
     generate multiple object detection targets by customized layers
@@ -404,6 +405,8 @@ def branched_multibox_layer(from_layers,
     assert sum(x > 0 for x in normalization) <= len(num_channels), \
         "must provide number of channels for each normalized layer"
 
+    assert len(shared_weights) != 0
+
     loc_pred_layers = []
     cls_pred_layers = []
     anchor_layers = []
@@ -446,14 +449,16 @@ def branched_multibox_layer(from_layers,
             ratio_str = "(" + ",".join([str(x) for x in ratio]) + ")"
             num_anchors = len(size) - 1 + len(ratio)
 
+            loc_weight, loc_bias, conf_weight, conf_bias = shared_weights[k][mbox_idx]
+
             num_loc_pred = num_anchors * 4
-            bias = mx.sym.Variable(
-                name="{}_loc_pred_conv_bias_{}".format(from_name, mbox_idx)
-                if mbox_idx else "{}_loc_pred_conv_bias".format(from_name),
-                init=mx.init.Constant(0.0),
-                lr_mult=2.0)
-            loc_pred = mx.sym.Convolution(data=from_layer, bias=bias, kernel=(3, 3), \
-                stride=(1, 1), pad=(1, 1), num_filter=num_loc_pred, \
+            # bias = mx.sym.Variable(
+            #     name="{}_loc_pred_conv_bias_{}".format(from_name, mbox_idx)
+            #     if mbox_idx else "{}_loc_pred_conv_bias".format(from_name),
+            #     init=mx.init.Constant(0.0),
+            #     lr_mult=2.0)
+            loc_pred = mx.sym.Convolution(data=from_layer, weight=loc_weight, bias=loc_bias, \
+                kernel=(3, 3), stride=(1, 1), pad=(1, 1), num_filter=num_loc_pred, \
                 name="{}_loc_pred_conv_{}".format(from_name, mbox_idx)
                 if mbox_idx else "{}_loc_pred_conv".format(from_name))
             loc_pred = mx.sym.transpose(loc_pred, axes=(0, 2, 3, 1))
@@ -461,13 +466,13 @@ def branched_multibox_layer(from_layers,
             loc_pred_layers.append(loc_pred)
 
             num_cls_pred = num_anchors * num_classes
-            bias = mx.sym.Variable(
-                name="{}_cls_pred_conv_bias_{}".format(from_name, mbox_idx)
-                if mbox_idx else "{}_cls_pred_conv_bias".format(from_name),
-                init=mx.init.Constant(0.0),
-                lr_mult=2.0)
-            cls_pred = mx.sym.Convolution(data=from_layer, bias=bias, kernel=(3, 3), \
-                stride=(1, 1), pad=(1, 1), num_filter=num_cls_pred, \
+            # bias = mx.sym.Variable(
+            #     name="{}_cls_pred_conv_bias_{}".format(from_name, mbox_idx)
+            #     if mbox_idx else "{}_cls_pred_conv_bias".format(from_name),
+            #     init=mx.init.Constant(0.0),
+            #     lr_mult=2.0)
+            cls_pred = mx.sym.Convolution(data=from_layer, weight=conf_weight, bias=conf_bias, \
+                kernel=(3, 3), stride=(1, 1), pad=(1, 1), num_filter=num_cls_pred, \
                 name="{}_cls_pred_conv_{}".format(from_name, mbox_idx)
                 if mbox_idx else "{}_cls_pred_conv".format(from_name))
             cls_pred = mx.sym.transpose(cls_pred, axes=(0, 2, 3, 1))
