@@ -30,7 +30,6 @@ python ./train.py \
     --finetune 1 \
     --optimizer ${OPTIMIZER} \
     --tensorboard ${TENSORBOARD} \
-    --monitor 40 \
     --lr ${LR} \
     --lr-steps ${LR_STEPS} \
     --freeze '' \
@@ -50,7 +49,6 @@ python ./train.py \
     --resume 5 \
     --optimizer ${OPTIMIZER} \
     --tensorboard ${TENSORBOARD} \
-    --monitor 40 \
     --lr ${LR} \
     --lr-steps ${LR_STEPS} \
     --freeze '' \
