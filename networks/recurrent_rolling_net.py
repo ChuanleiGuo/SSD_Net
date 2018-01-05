@@ -647,10 +647,14 @@ def get_symbol_rolling_test(rolling_time,
     layers = multi_layer_feature(
         body, from_layers, num_filters, strides, pads, min_filter=min_filter)
 
+    mbox_shared_weights = None
+    if len(sizes) == ((len(from_layers) - 1) * rolling_time + 1):
+        mbox_shared_weights = _get_multibox_shared_weights(len(layers), 4)
+
     if len(sizes) == (len(from_layers) - 1) * rolling_time + 1:
         loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(layers, \
             num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-            num_channels=num_filters, clip=False, interm_layer=0, branch_num=4)
+            num_channels=num_filters, clip=False, interm_layer=0, branch_num=4, shared_weights=mbox_shared_weights)
     elif len(sizes) == len(from_layers):
         loc_preds, cls_preds, anchor_boxes = multibox_layer(layers, \
             num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
@@ -689,7 +693,8 @@ def get_symbol_rolling_test(rolling_time,
             nms_thresh=nms_thresh,
             force_suppress=force_suppress,
             nms_topk=nms_topk,
-            rolling_idx=roll_idx)
+            rolling_idx=roll_idx,
+            mbox_shared_weights=mbox_shared_weights)
 
         outputs.append(out)
 
