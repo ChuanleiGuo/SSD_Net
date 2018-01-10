@@ -51,8 +51,9 @@ def get_scales(min_scale=0.2,
                     min_sizes[i + 1] - min_sizes[i]) / branch_num)
         min_sizes_b.append(min_sizes[-1])
 
-        for i in range(0, len(min_sizes_b) - 1):
-            max_sizes_b.append(min_sizes_b[i + 1])
+        for i in range(0, len(max_sizes) - 1):
+            for j in range(1, branch_num + 1):
+                max_sizes_b.append(min_sizes_b[branch_num * i + j])
         max_sizes_b.append(max_sizes[-1])
 
         min_sizes, max_sizes = min_sizes_b, max_sizes_b
