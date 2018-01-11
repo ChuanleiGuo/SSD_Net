@@ -9,6 +9,7 @@ curr_path = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(curr_path, '..'))
 from dataset.pascal_voc import PascalVoc
 from dataset.kitti_voc import KITTIVoc
+from dataset.kitti_voc_car import KITTICar
 from dataset.concat_db import ConcatDB
 
 def load_pascal(image_set, year, devkit_path, shuffle=False,
@@ -62,6 +63,19 @@ def load_kitti(image_set, root_path, shuffle=True, class_names=None, true_negati
     else:
         return imdbs[0]
 
+def load_kitti_car(image_set, root_path, shuffle=True, class_names=None, true_negative=None):
+    imageset = [y.strip() for y in image_set.split(',')]
+    assert image_set, "No image_set specified"
+
+    imdbs = []
+    for s in image_set:
+        imdbs.append(KITTICar(s, root_path, shuffle, is_train=True,
+            class_names=class_names, true_negative_images=true_negative))
+    if len(imdbs) > 1:
+        return ConcatDB(imdbs, shuffle)
+    else:
+        return imdbs[0]
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Prepare lists for dataset')
     parser.add_argument('--dataset', dest='dataset', help='dataset to use',
@@ -97,6 +111,11 @@ if __name__ == "__main__":
     elif args.dataset == "kitti":
         db = load_kitti(args.set, args.root_path, shuffle=args.shuffle,
                         class_names=args.class_names, true_negative=args.true_negative)
+        print("saving list to disk...")
+        db.save_imglist(args.target, root=args.root_path)
+    elif args.dataset == "kitti_car":
+        db = load_kitti_car(args.set, args.root_path, shuffle=args.shuffle,
+                            class_names=args.class_names, true_negative=args.true_negative)
         print("saving list to disk...")
         db.save_imglist(args.target, root=args.root_path)
     else:
