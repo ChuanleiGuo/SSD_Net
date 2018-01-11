@@ -64,7 +64,7 @@ def load_kitti(image_set, root_path, shuffle=True, class_names=None, true_negati
         return imdbs[0]
 
 def load_kitti_car(image_set, root_path, shuffle=True, class_names=None, true_negative=None):
-    imageset = [y.strip() for y in image_set.split(',')]
+    image_set = [y.strip() for y in image_set.split(',')]
     assert image_set, "No image_set specified"
 
     imdbs = []
