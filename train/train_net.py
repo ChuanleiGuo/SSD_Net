@@ -299,7 +299,7 @@ def train_net(network,
     # load symbol
     net = get_symbol_train(
         network,
-        data_shape[1],
+        data_shape,                # MARK: tuple (num_channel, H, W)
         rolling=rolling,           # MARK: whether rolling; added param
         rolling_time=rolling_time,
         num_classes=num_classes,

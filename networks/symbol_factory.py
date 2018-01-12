@@ -275,18 +275,19 @@ def get_symbol_train(network,
     ----------
     network : str
         name for the base network symbol
-    data_shape : int
-        input shape
+    data_shape : tuple
+        (num_channel, H, W)
     kwargs : dict
         see symbol_builder.get_symbol_train for more details
     """
     if network.startswith('legacy'):
         logging.warn('Using legacy model.')
         return symbol_builder.import_module(network).get_symbol_train(**kwargs)
-    config = get_config(network, data_shape, **kwargs).copy()
+    config = get_config(network, data_shape[1], **kwargs).copy()
     config.update(kwargs)
 
     if rolling:
+        config["data_shape"] = data_shape
         return get_symbol_rolling_train(rolling_time, **config)
     else:
         return symbol_builder.get_symbol_train(**config)

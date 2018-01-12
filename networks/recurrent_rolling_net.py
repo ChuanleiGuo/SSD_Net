@@ -257,6 +257,7 @@ def create_rolling_struct(from_layers,
                     name="conv3x3_" + o_layer_name)
                 o_layer = mx.sym.relu(
                     data=o_layer, name="relu3_" + o_layer_name)
+
             f_layers.append(o_layer)
 
         f_layers.append(from_layers[i])
@@ -273,23 +274,48 @@ def create_rolling_struct(from_layers,
             o_layer = mx.sym.relu(data=o_layer, name="relu_" + o_layer_name)
 
             next_layer_output_size = _get_sym_output_shape(
-                f_layer, (20, 3, data_shape, data_shape))
+                f_layer, (20, 3, data_shape[1], data_shape[2]))
             layer_output_size = _get_sym_output_shape(
-                from_layers[i], (20, 3, data_shape, data_shape))
-            isTwice = (layer_output_size[0] / next_layer_output_size[0] == 2)
-            if strides[i + 1] == -1 or isTwice:
-                factor = 2
-                p = int(ceil((factor - 1) / 2.))
-                k = int(2 * factor - factor % 2)
-                s = int(factor)
+                from_layers[i], (20, 3, data_shape[1], data_shape[2]))
+
+
+            if data_shape[1] == data_shape[2]:
+
+                isTwice = (layer_output_size[0] / next_layer_output_size[0] == 2) and \
+                    (layer_output_size[1] / next_layer_output_size[1] == 2)
+                if strides[i + 1] == -1 or isTwice:
+                    factor = 2
+                    p = int(ceil((factor - 1) / 2.))
+                    k = int(2 * factor - factor % 2)
+                    s = int(factor)
+                else:
+                    s, p = strides[i + 1], pads[i + 1]
+                    k = 3
+
+                s = (s, s)
+                p = (p, p)
+                k = (k, k)
             else:
-                s, p = strides[i + 1], pads[i + 1]
-                k = 3
+                factor = 2
+                h_twice = layer_output_size[0] / next_layer_output_size[0] == 2
+                w_twice = layer_output_size[1] / next_layer_output_size[1] == 2
+                h_p = int(ceil((factor - 1) / 2.)) if (strides[i + 1] == -1 or h_twice) \
+                    else pads[i + 1]
+                w_p = int(ceil((factor - 1) / 2.)) if (strides[i + 1] == -1 or w_twice) \
+                    else pads[i + 1]
+                h_s = int(factor) if (strides[i + 1] == -1 or h_twice) else strides[i + 1]
+                w_s = int(factor) if (strides[i + 1] == -1 or w_twice) else strides[i + 1]
+                h_k = int(2 * factor - factor % 2) if (strides[i + 1] == -1 or h_twice) else 3
+                w_k = int(2 * factor - factor % 2) if (strides[i + 1] == -1 or w_twice) else 3
+
+                s = (h_s, w_s)
+                p = (h_p, w_p)
+                k = (h_k, w_k)
 
             d_weight, _ = deconv_weights[i]
 
             o_layer = mx.sym.Deconvolution(data=o_layer, weight=d_weight, no_bias=True, \
-                num_filter=num_filter, kernel=(k, k), stride=(s, s), pad=(p, p), \
+                num_filter=num_filter, kernel=k, stride=s, pad=p, \
                 name="deconv_"+o_layer_name)
             # o_layer = mx.sym.relu(data=o_layer, name="relu_deconv_" + o_layer_name)
 
