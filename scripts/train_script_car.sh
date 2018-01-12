@@ -16,7 +16,7 @@ LR_STEPS=20,40,100,200,400
 FREEZE=""
 ROLLING=True
 ROLLING_TIME=4
-END_EPOCH=500
+END_EPOCH=400
 PREFIX="./output/exp1/ssd_"
 
 python ./train.py \
@@ -24,7 +24,7 @@ python ./train.py \
     --val-path ${VAL_REC_PATH} \
     --network ${NETWORK} \
     --batch-size 128 \
-    --data-shape 2560 768 \
+    --data-shape 768 2560 \
     --gpus ${GPUS} \
     --prefix ${PREFIX} \
     --finetune 1 \
@@ -46,7 +46,7 @@ python ./train.py \
     --val-path ${VAL_REC_PATH} \
     --network ${NETWORK} \
     --batch-size ${BATCH_SIZE} \
-    --data-shape 2560 768 \
+    --data-shape 768 2560 \
     --gpus ${GPUS} \
     --prefix ${PREFIX} \
     --resume 100 \
