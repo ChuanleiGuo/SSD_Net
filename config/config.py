@@ -15,7 +15,7 @@ RandCropper = namedtuple_with_defaults('RandCropper',
     0.0, 1.0,
     0.0, 1.0,
     0.0, 1.0,
-    25])
+    50])
 
 RandPadder = namedtuple_with_defaults('RandPadder',
     'rand_pad_prob, max_pad_scale, fill_value',
@@ -43,16 +43,17 @@ cfg.train.rand_crop_samplers = [
     RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.3),
     RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.5),
     RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.7),
-    RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.9),]
+    RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.9),
+    RandCropper(min_crop_scales=0.3, min_crop_overlaps=1.0)]
 cfg.train.crop_emit_mode = 'center'
 # cfg.train.emit_overlap_thresh = 0.4
 # random padding
 cfg.train.rand_pad = RandPadder(rand_pad_prob=0.5, max_pad_scale=4.0)
 # random color jitter
-cfg.train.color_jitter = ColorJitter(random_hue_prob=0.5, random_saturation_prob=0.5,
-    random_illumination_prob=0.5, random_contrast_prob=0.5)
+cfg.train.color_jitter = ColorJitter(random_hue_prob=1, random_saturation_prob=1,
+    random_illumination_prob=1, random_contrast_prob=1)
 cfg.train.inter_method = 10  # random interpolation
-cfg.train.rand_mirror_prob = 0.5
+cfg.train.rand_mirror_prob = 1
 cfg.train.shuffle = True
 cfg.train.seed = 233
 cfg.train.preprocess_threads = 48
