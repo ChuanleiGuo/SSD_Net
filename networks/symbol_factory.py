@@ -161,14 +161,14 @@ def get_config(network, data_shape, **kwargs):
         num_layers = 50
         image_shape = '3,224,224'  # resnet require it as shape check
         network = "resnet"
-        from_layers = ['_plus12', '_plus15', '', '', '', '']
-        num_filters = [256, 256, 256, 256, 256, 256]
-        strides = [-1, -1, 2, 2, 2, 2]
-        pads = [-1, -1, 1, 1, 1, 1]
+        from_layers = ['_plus6', '_plus12', '_plus15', '', '', '', '']
+        num_filters = [256, 256, 256, 256, 256, 256, 256]
+        strides = [-1, -1, -1, 2, 2, 2, 2]
+        pads = [-1, -1, -1, 1, 1, 1, 1]
         sizes = get_scales(
             min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
-        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
-            [1,2,.5], [1,2,.5]]
+        ratios = [[1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
         normalizations = -1
         steps = []
         return locals()
@@ -176,18 +176,18 @@ def get_config(network, data_shape, **kwargs):
         num_layers = 50
         image_shape = '3,224,224'  # resnet require it as shape check
         network = "resnet"
-        from_layers = ['_plus12', '_plus15', '', '', '', '']
-        num_filters = [256, 256, 256, 256, 256, 256]
-        strides = [-1, -1, 2, 2, 2, 2]
-        pads = [-1, -1, 1, 1, 1, 1]
+        from_layers = ['_plus6', '_plus12', '_plus15', '', '', '', '']
+        num_filters = [256, 256, 256, 256, 256, 256, 256]
+        strides = [-1, -1, -1, 2, 2, 2, 2]
+        pads = [-1, -1, -1, 1, 1, 1, 1]
         sizes = get_scales(
             min_scale=0.15,
             max_scale=0.85,
             num_layers=len(from_layers),
             branch=True,
             branch_num=4)
-        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
-            [1,2,.5], [1,2,.5]]
+        ratios = [[1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
         normalizations = -1
         steps = []
         return locals()
@@ -203,6 +203,21 @@ def get_config(network, data_shape, **kwargs):
             min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
         ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5], [1,2,.5]]
+        normalizations = -1
+        steps = []
+        return locals()
+    elif network == "resnet101-rolling":
+        num_layers = 101
+        image_shape = '3,224,224'
+        network = 'resnet'
+        from_layers = ['_plus6', '_plus29', '_plus32', '', '', '', '']
+        num_filters = [256] * 7
+        strides = [-1, -1, -1, 2, 2, 2, 2]
+        pads = [-1, -1, -1, 1, 1, 1, 1]
+        sizes = get_scales(
+            min_scale=0.15, max_scale=0.85, num_layers=len(from_layers))
+        ratios = [[1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
         normalizations = -1
         steps = []
         return locals()

@@ -84,15 +84,15 @@ def main():
             "data_shape": 512,
             "from_layers": ['ch_concat_mixed_7_chconcat', 'ch_concat_mixed_10_chconcat']
         },
-        {
-            "network": "resnet50",
-            "data_shape": (768, 2560),
-            "from_layers": ['_plus12', '_plus15'] + ["multi_feat_%d_conv_3x3_relu" % k for k in range(2, 6)]
-        },
+        # {
+        #     "network": "resnet50",
+        #     "data_shape": (768, 2560),
+        #     "from_layers": ['_plus6', '_plus12', '_plus15'] + ["multi_feat_%d_conv_3x3_relu" % k for k in range(2, 6)]
+        # },
         {
             "network": "resnet101",
-            "data_shape": 512,
-            "from_layers": ['_plus29', '_plus32'] + ["multi_feat_%d_conv_3x3_relu" % k for k in range(2, 6)]
+            "data_shape": (768, 2560),
+            "from_layers": ['_plus6', '_plus29', '_plus32'] + ["multi_feat_%d_conv_3x3_relu" % k for k in range(2, 6)]
         },
         {
             "network": "densenet121",
@@ -106,8 +106,8 @@ def main():
         },
     ]
 
-    # res = output_info(net_infos)
-    # pprint(res)
+    res = output_info(net_infos)
+    pprint(res)
 
     print('-' * 10  + "Rolling" + '-' * 10)
     net_infos = [
@@ -122,8 +122,8 @@ def main():
         #     "from_layers": ["multi_feat_%d_conv_3x3_relu" % k for k in range(0, 6)]
         # },
     ]
-    res = output_info(net_infos, rolling=True)
-    pprint(res)
+    # res = output_info(net_infos, rolling=True)
+    # pprint(res)
 
 
 def prior_sizes(width, height, min_ratio, max_ratio, source_layers):
