@@ -52,9 +52,10 @@ def net_visualization(network=None,
 
 if __name__ == '__main__':
     args = parse_args()
+    data_shape = [3, args.data_shape, args.data_shape]
     net_visualization(network=args.network,
                       num_classes=args.num_classes,
-                      data_shape=args.data_shape,
+                      data_shape=data_shape,
                       train=args.train,
                       output_dir=args.output_dir,
                       print_net=args.print_net)
