@@ -216,8 +216,8 @@ def get_config(network, data_shape, **kwargs):
         pads = [-1, -1, -1, 1, 1, 1, 1]
         sizes = get_scales(
             min_scale=0.15, max_scale=0.85, num_layers=len(from_layers))
-        ratios = [[1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
-            [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
+        ratios = [[1,2,.5], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
+            [1,2,.5,3,1./3], [1,2,.5], [1,2,.5]]
         normalizations = -1
         steps = []
         return locals()
