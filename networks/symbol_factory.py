@@ -166,7 +166,7 @@ def get_config(network, data_shape, **kwargs):
         strides = [-1, -1, -1, 2, 2, 2, 2]
         pads = [-1, -1, -1, 1, 1, 1, 1]
         sizes = get_scales(
-            min_scale=0.2, max_scale=0.9, num_layers=len(from_layers))
+            min_scale=0.15, max_scale=0.85, num_layers=len(from_layers))
         ratios = [[1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3], \
             [1,2,.5,3,1./3], [1,2,.5,3,1./3], [1,2,.5,3,1./3]]
         normalizations = -1
