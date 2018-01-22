@@ -323,10 +323,11 @@ def get_symbol(network, data_shape, rolling=False, rolling_time=4, **kwargs):
     if network.startswith('legacy'):
         logging.warn('Using legacy model.')
         return symbol_builder.import_module(network).get_symbol(**kwargs)
-    config = get_config(network, data_shape, **kwargs).copy()
+    config = get_config(network, data_shape[1], **kwargs).copy()
     config.update(kwargs)
 
     if rolling:
+        config["data_shape"] = data_shape
         return get_symbol_rolling_test(rolling_time, **config)
     else:
         return symbol_builder.get_symbol(**config)

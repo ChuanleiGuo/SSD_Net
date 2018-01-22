@@ -695,12 +695,13 @@ def get_symbol_rolling_test(rolling_time,
         variances=(0.1, 0.1, 0.2, 0.2), nms_topk=nms_topk)
 
     outputs = [out]
+    last_rolling_layers = layers
 
     shared_weights = _get_shared_weights(len(layers), strides)
 
     for roll_idx in range(1, rolling_time + 1):
         roll_layers = create_rolling_struct(
-            layers,
+            last_rolling_layers,
             kwargs["data_shape"],
             num_filters=num_filters,
             strides=strides,
@@ -725,5 +726,6 @@ def get_symbol_rolling_test(rolling_time,
             mbox_shared_weights=mbox_shared_weights)
 
         outputs.append(out)
+        last_rolling_layers = roll_layers
 
     return mx.sym.Group(outputs)

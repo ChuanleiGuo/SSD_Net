@@ -24,6 +24,7 @@ class TestDB(Imdb):
         num_images = len(images)
         super(TestDB, self).__init__("test" + str(num_images))
         self.image_set_index = images
+        self.num_images = num_images
         self.root_dir = root_dir if root_dir else None
         self.extension = extension if extension else None
 
