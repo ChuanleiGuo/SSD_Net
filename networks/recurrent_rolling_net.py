@@ -357,8 +357,8 @@ def add_multibox_and_loss_for_extra(extra_layers,
     elif len(sizes) > len(extra_layers):
         loc_preds, cls_preds, anchor_boxes = branched_multibox_layer(extra_layers, \
             num_classes, sizes=sizes, ratios=ratios, normalization=normalizations, \
-            num_channels=num_filters, clip=False, interm_layer=0, steps=steps, branch_num=4, \
-            shared_weights=mbox_shared_weights)
+            num_channels=num_filters, clip=False, interm_layer=0, steps=steps, \
+            branch_num=4, shared_weights=mbox_shared_weights)
     else:
         raise ValueError("wrong number of sizes")
 
@@ -445,28 +445,30 @@ def _get_multibox_shared_weights(num_layers, branch_num):
     shared_weights = []
     for layer_idx in range(num_layers):
         layer_mbox_weights = []
+        if layer_idx == num_layers - 1:
+            branch_num = 1
         for branch_idx in range(branch_num):
             loc_weight = mx.sym.Variable(
-                name="layer_{}_shared_mbox_loc_{}".format(layer_idx, branch_idx),
+                name="layer_{}_shared_mbox_loc_{}_weight".format(layer_idx, branch_idx),
                 lr_mult=1,
                 wd_mult=1,
                 init=mx.init.Xavier()
             )
             loc_bias = mx.sym.Variable(
-                name="layer_{}_shared_mbox_loc_bias_{}".format(layer_idx, branch_idx),
+                name="layer_{}_shared_mbox_loc_{}_bias".format(layer_idx, branch_idx),
                 lr_mult=2,
                 wd_mult=0,
                 init=mx.init.Constant(0)
             )
 
             conf_weight = mx.sym.Variable(
-                name="layer_{}_shared_mbox_conf_{}".format(layer_idx, branch_idx),
+                name="layer_{}_shared_mbox_conf_{}_weight".format(layer_idx, branch_idx),
                 lr_mult=1,
                 wd_mult=1,
                 init=mx.init.Xavier()
             )
             conf_bias = mx.sym.Variable(
-                name="layer_{}_shared_mbox_conf_bias_{}".format(layer_idx, branch_idx),
+                name="layer_{}_shared_mbox_conf_{}_bias".format(layer_idx, branch_idx),
                 lr_mult=2,
                 wd_mult=0,
                 init=mx.init.Constant(0)

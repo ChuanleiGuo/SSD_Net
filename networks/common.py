@@ -405,6 +405,7 @@ def branched_multibox_layer(from_layers,
     assert sum(x > 0 for x in normalization) <= len(num_channels), \
         "must provide number of channels for each normalized layer"
 
+    assert shared_weights is not None
     assert len(shared_weights) != 0
 
     loc_pred_layers = []

@@ -43,7 +43,8 @@ cfg.train.rand_crop_samplers = [
     RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.3),
     RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.5),
     RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.7),
-    RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.9)]
+    RandCropper(min_crop_scales=0.3, min_crop_overlaps=0.9),
+    RandCropper(min_crop_scales=0.3, min_crop_overlaps=1.0)]
 cfg.train.crop_emit_mode = 'center'
 # cfg.train.emit_overlap_thresh = 0.4
 # random padding
